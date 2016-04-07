@@ -19,7 +19,7 @@ class Client {
     }
 
     private static function caBundle() {
-        return __DIR__ . "/../data/shortpixel.crt";
+        return dirname(__DIR__) . "/data/shortpixel.crt";
     }
 
     function __construct($app_identifier = NULL) {
@@ -29,7 +29,8 @@ class Client {
             CURLOPT_HEADER => true,
             CURLOPT_TIMEOUT => 10,
             CURLOPT_CAINFO => self::caBundle(),
-            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYPEER => true, //TODO true
+            //CURLOPT_SSL_VERIFYHOST => false, //TODO remove
             CURLOPT_USERAGENT => join(" ", array_filter(array(self::userAgent(), $app_identifier))),
         );
     }
