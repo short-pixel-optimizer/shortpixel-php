@@ -1,6 +1,7 @@
 <?php
 
 use ShortPixel\CurlMock;
+use ShortPixel\Client;
 
 class ShortPixelSourceTest extends TestCase {
     private $dummyFile;
