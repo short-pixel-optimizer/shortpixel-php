@@ -20,7 +20,7 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
         if (is_dir($tmp)) self::$tempDir = $tmp;
     }
 
-    public function testShouldCompressFromFile() {
+/*    public function testShouldCompressFromFile() {
         $this->assertTrue(true);
         return;
         $result = self::$optimized->toFiles(self::$tempDir);
@@ -31,11 +31,11 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
         $this->assertGreaterThan(1000, $size);
         $this->assertLessThan(1500, $size);
 
-        /* width == 137 */
+        // width == 137
         $this->assertContains("\0\0\0\x89", $contents);
         $this->assertNotContains("Copyright ShortPixel", $contents);
     }
-
+*/
     public function testShouldCompressLossyFromUrls() {
         $source = \ShortPixel\fromUrls("https://shortpixel.com/img/tests/wrapper/shortpixel.png");
         $result = $source->toFiles(self::$tempDir);
@@ -54,6 +54,7 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
         }
     }
 
+    /*
     public function testShouldResize() {
         $source = \ShortPixel\fromUrls("https://shortpixel.com/img/tests/wrapper/shortpixel.png");
         $result = $source->resize(50, 50)->toFiles(self::$tempDir);
@@ -66,7 +67,7 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
 
             $this->assertEquals($data->LossySize, $size);
 
-            /* width == 50 */
+            // width == 50
             $this->assertContains("\0\0\0\x32", $contents);
             $this->assertNotContains("Copyright ShortPixel", $contents);
         }
@@ -82,8 +83,9 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
         $this->assertGreaterThan(1000, $size);
         $this->assertLessThan(2000, $size);
 
-        /* width == 137 */
+        // width == 137
         $this->assertContains("\0\0\0\x89", $contents);
         $this->assertContains("Copyright ShortPixel", $contents);
     }
+    */
 }
