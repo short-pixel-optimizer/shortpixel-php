@@ -20,12 +20,17 @@ class Commander {
     }
 
     public function resize($width, $height) {
-        $this->commands = array_merge($this->commands, array("resize_width" => $width, "resize_height" => $height));
+        $this->commands = array_merge($this->commands, array("resize" => 1, "resize_width" => $width, "resize_height" => $height));
         return $this;
     }
 
     public function keepExif($keep = true) {
         $this->commands = array_merge($this->commands, array("keep_exif" => $keep ? 1 : 0));
+        return $this;
+    }
+
+    public function refresh($refresh = true) {
+        $this->commands = array_merge($this->commands, array("refresh" => $refresh ? 1 : 0));
         return $this;
     }
 

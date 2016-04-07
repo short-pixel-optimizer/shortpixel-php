@@ -10,12 +10,16 @@ class Client {
         return "https://api.shortpixel.com";
     }
     public static function API_ENDPOINT() {
-        return self::API_URL() . "/v2/reducer.php";
+        return self::API_URL() . "/v2/reducer_dev.php";
     }
 
     public static function userAgent() {
         $curl = curl_version();
         return "ShortPixel/" . VERSION . " PHP/" . PHP_VERSION . " curl/" . $curl["version"];
+    }
+
+    private static function caBundle() {
+        return __DIR__ . "/../data/shortpixel.crt";
     }
 
     function __construct($app_identifier = NULL) {
@@ -24,6 +28,7 @@ class Client {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HEADER => true,
             CURLOPT_TIMEOUT => 10,
+            CURLOPT_CAINFO => self::caBundle(),
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_USERAGENT => join(" ", array_filter(array(self::userAgent(), $app_identifier))),
         );
