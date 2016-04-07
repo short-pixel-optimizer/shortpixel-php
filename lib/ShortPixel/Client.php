@@ -29,8 +29,8 @@ class Client {
             CURLOPT_HEADER => true,
             CURLOPT_TIMEOUT => 10,
             CURLOPT_CAINFO => self::caBundle(),
-            CURLOPT_SSL_VERIFYPEER => true, //TODO true
-            //CURLOPT_SSL_VERIFYHOST => false, //TODO remove
+            CURLOPT_SSL_VERIFYPEER => false, //TODO true
+            CURLOPT_SSL_VERIFYHOST => false, //TODO remove
             CURLOPT_USERAGENT => join(" ", array_filter(array(self::userAgent(), $app_identifier))),
         );
     }
