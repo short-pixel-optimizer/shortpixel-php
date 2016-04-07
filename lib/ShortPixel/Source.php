@@ -6,10 +6,12 @@ class Source {
     private $key, $urls;
 
     public static function fromFile($path) {
+        if(!file_exists($path)) throw new ClientException("File not found");
         return self::fromBuffer(file_get_contents($path));
     }
 
     public static function fromBuffer($string) {
+        return new Result(array(), $string); //dummy
     }
 
     public static function fromUrls($urls) {

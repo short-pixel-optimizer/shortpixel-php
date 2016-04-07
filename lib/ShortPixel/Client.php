@@ -117,7 +117,7 @@ class Client {
         // curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // enable if you want
         curl_setopt($ch, CURLOPT_FILE, $fp);          // output to file
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 1000);      // some large value to allow curl to run for a long time
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10000);      // some large value to allow curl to run for a long time
         curl_setopt($ch, CURLOPT_USERAGENT, $this->options[CURLOPT_USERAGENT]);
         // curl_setopt($ch, CURLOPT_VERBOSE, true);   // Enable this line to see debug prints
         curl_exec($ch);

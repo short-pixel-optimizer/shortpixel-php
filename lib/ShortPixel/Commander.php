@@ -35,7 +35,7 @@ class Commander {
     }
 
     public function __call($method, $args) {
-        if (method_exists(Result::class, $method)) {
+        if (method_exists("ShortPixel\Result", $method)) {
             //execute the commands and forward to Result
             $return = $this->execute(true);
             return call_user_func_array(array(new Result($this->commands, $return), $method), $args);
