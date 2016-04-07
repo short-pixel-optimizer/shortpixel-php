@@ -1,6 +1,7 @@
 <?php
 
 use ShortPixel\CurlMock;
+use ShortPixel\Client;
 
 class ShortPixelClientTest extends TestCase {
     public function testRequestWhenValidShouldIssueRequest() {
