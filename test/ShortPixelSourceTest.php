@@ -14,7 +14,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithInvalidApiKeyFromFileShouldThrowAccountException() {
         ShortPixel\setKey("invalid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 401, "body" => '{"error":"Unauthorized","message":"Credentials are invalid"}'
         ));
 
@@ -25,7 +25,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithInvalidApiKeyFromBufferShouldThrowAccountException() {
         ShortPixel\setKey("invalid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 401, "body" => '{"error":"Unauthorized","message":"Credentials are invalid"}'
         ));
 
@@ -36,18 +36,18 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithInvalidApiKeyFromUrlShouldThrowAccountException() {
         ShortPixel\setKey("invalid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 401, "body" => '{"error":"Unauthorized","message":"Credentials are invalid"}'
         ));
 
         $this->setExpectedException("ShortPixel\AccountException");
-        ShortPixel\Source::fromUrl("http://example.com/test.jpg");
+        ShortPixel\Source::fromUrls("http://example.com/test.jpg");
     }
 
     public function testWithValidApiKeyFromFileShouldReturnSource() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 
@@ -57,7 +57,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyFromFileShouldReturnSourceWithData() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 
@@ -71,7 +71,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyFromBufferShouldReturnSource() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 
@@ -81,7 +81,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyFromBufferShouldReturnSourceWithData() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 
@@ -95,17 +95,17 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyFromUrlShouldReturnSource() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 
-        $this->assertInstanceOf("ShortPixel\Source", ShortPixel\Source::fromUrl("http://example.com/testWithValidApiKey.jpg"));
+        $this->assertInstanceOf("ShortPixel\Source", ShortPixel\Source::fromUrls("http://example.com/testWithValidApiKey.jpg"));
     }
 
     public function testWithValidApiKeyFromUrlShouldReturnSourceWithData() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 
@@ -113,24 +113,24 @@ class ShortPixelSourceTest extends TestCase {
             "status" => 200, "body" => "compressed file"
         ));
 
-        $this->assertSame("compressed file", ShortPixel\Source::fromUrl("http://example.com/testWithValidApiKey.jpg")->toBuffer());
+        $this->assertSame("compressed file", ShortPixel\Source::fromUrls("http://example.com/testWithValidApiKey.jpg")->toBuffer());
     }
 
     public function testWithValidApiKeyFromUrlShouldThrowExceptionIfRequestIsNotOK() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 400, "body" => '{"error":"Source not found","message":"Cannot parse URL"}'
         ));
 
         $this->setExpectedException("ShortPixel\ClientException");
-        ShortPixel\Source::fromUrl("file://wrong");
+        ShortPixel\Source::fromUrls("file://wrong");
     }
 
     public function testWithValidApiKeyResultShouldReturnResult() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201,
             "headers" => array("Location" => "https://api.shortpixel.com/some/location"),
         ));
@@ -141,7 +141,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyPreserveShouldReturnSource() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 
@@ -156,7 +156,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyPreserveShouldReturnSourceWithData() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 
@@ -171,7 +171,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyPreserveShouldReturnSourceWithDataForArray() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 
@@ -186,7 +186,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyPreserveShouldIncludeOtherOptionsIfSet() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 
@@ -203,7 +203,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyResizeShouldReturnSource() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 
@@ -218,7 +218,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyResizeShouldReturnSourceWithData() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 
@@ -233,7 +233,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyStoreShouldReturnResultMeta() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201,
             "headers" => array("Location" => "https://api.shortpixel.com/some/location"),
         ));
@@ -250,7 +250,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyStoreShouldReturnResultMetaWithLocation() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201,
             "headers" => array("Location" => "https://api.shortpixel.com/some/location"),
         ));
@@ -270,7 +270,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyStoreShouldIncludeOtherOptionsIfSet() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201,
             "headers" => array("Location" => "https://api.shortpixel.com/some/location"),
         ));
@@ -287,7 +287,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyToBufferShouldReturnImageData() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
         CurlMock::register("https://api.shortpixel.com/some/location", array(
@@ -300,7 +300,7 @@ class ShortPixelSourceTest extends TestCase {
     public function testWithValidApiKeyToFileShouldStoreImageData() {
         ShortPixel\setKey("valid");
 
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
 

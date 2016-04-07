@@ -2,12 +2,16 @@
 
 namespace ShortPixel;
 
-define ("API_URL", "https://api.shortpixel.com");
 
 class Client {
-    const API_ENDPOINT = API_URL . "/v2/reducer.php";
 
     private $options;
+    public static function API_URL() {
+        return "https://api.shortpixel.com";
+    }
+    public static function API_ENDPOINT() {
+        return self::API_URL() . "/v2/reducer.php";
+    }
 
     public static function userAgent() {
         $curl = curl_version();
@@ -49,7 +53,7 @@ class Client {
         $request = curl_init();
         curl_setopt_array($request, $this->options);
 
-        curl_setopt($request, CURLOPT_URL, Client::API_ENDPOINT);
+        curl_setopt($request, CURLOPT_URL, Client::API_ENDPOINT());
         curl_setopt($request, CURLOPT_HTTPHEADER, $header);
         curl_setopt($request, CURLOPT_CUSTOMREQUEST, strtoupper($method));
 

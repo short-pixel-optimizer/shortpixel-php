@@ -4,16 +4,16 @@ use ShortPixel\CurlMock;
 
 class ShortPixelClientTest extends TestCase {
     public function testRequestWhenValidShouldIssueRequest() {
-        CurlMock::register(API_URL, array("status" => 200));
+        CurlMock::register(Client::API_URL(), array("status" => 200));
         $client = new ShortPixel\Client("key");
         $client->request("get", "/");
 
-        $this->assertSame(API_URL, CurlMock::last(CURLOPT_URL));
+        $this->assertSame(Client::API_URL(), CurlMock::last(CURLOPT_URL));
         $this->assertSame("api:key", CurlMock::last(CURLOPT_USERPWD));
     }
 
     public function testRequestWhenValidShouldIssueRequestWithoutBodyWhenOptionsAreEmpty() {
-        CurlMock::register(API_URL, array("status" => 200));
+        CurlMock::register(Client::API_URL(), array("status" => 200));
         $client = new ShortPixel\Client("key");
         $client->request("get", "/", array());
 
@@ -21,7 +21,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWhenValidShouldIssueRequestWithoutContentTypeWhenOptionsAreEmpty() {
-        CurlMock::register(API_URL, array("status" => 200));
+        CurlMock::register(Client::API_URL(), array("status" => 200));
         $client = new ShortPixel\Client("key");
         $client->request("get", "/", array());
 
@@ -29,7 +29,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWhenValidShouldIssueRequestWithJSONBody() {
-        CurlMock::register(API_URL, array("status" => 200));
+        CurlMock::register(Client::API_URL(), array("status" => 200));
         $client = new ShortPixel\Client("key");
         $client->request("get", "/", array("hello" => "world"));
 
@@ -38,7 +38,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWhenValidShouldIssueRequestWithUserAgent() {
-        CurlMock::register(API_URL, array("status" => 200));
+        CurlMock::register(Client::API_URL(), array("status" => 200));
         $client = new ShortPixel\Client("key");
         $client->request("get", "/");
 
@@ -47,7 +47,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWhenValidShouldUpdateCompressionCount() {
-        CurlMock::register(API_URL, array(
+        CurlMock::register(Client::API_URL(), array(
             "status" => 200, "headers" => array("Compression-Count" => "12")
         ));
         $client = new ShortPixel\Client("key");
@@ -57,7 +57,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWhenValidWithAppIdShouldIssueRequestWithUserAgent() {
-        CurlMock::register(API_URL, array("status" => 200));
+        CurlMock::register(Client::API_URL(), array("status" => 200));
         $client = new ShortPixel\Client("key", "TestApp/0.1");
         $client->request("get", "/");
 
@@ -66,7 +66,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWithUnexpectedErrorShouldThrowConnectionException() {
-        CurlMock::register(API_URL, array(
+        CurlMock::register(Client::API_URL(), array(
             "error" => "Failed!", "errno" => 2
         ));
         $this->setExpectedException("ShortPixel\ConnectionException");
@@ -75,7 +75,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWithUnexpectedErrorShouldThrowExceptionWithMessage() {
-        CurlMock::register(API_URL, array(
+        CurlMock::register(Client::API_URL(), array(
             "error" => "Failed!", "errno" => 2
         ));
         $this->setExpectedExceptionRegExp("ShortPixel\ConnectionException",
@@ -85,7 +85,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWithCurlErrorShouldThrowConnectionError() {
-        CurlMock::register(API_URL, array(
+        CurlMock::register(Client::API_URL(), array(
             "errno" => 0, "error" => "", "return" => null
         ));
         $this->setExpectedException("ShortPixel\ConnectionException");
@@ -94,7 +94,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWithServerErrorShouldThrowServerException() {
-        CurlMock::register(API_URL, array(
+        CurlMock::register(Client::API_URL(), array(
             "status" => 584, "body" => '{"error":"InternalServerError","message":"Oops!"}'
         ));
         $this->setExpectedException("ShortPixel\ServerException");
@@ -103,7 +103,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWithServerErrorShouldThrowExceptionWithMessage() {
-        CurlMock::register(API_URL, array(
+        CurlMock::register(Client::API_URL(), array(
             "status" => 584, "body" => '{"error":"InternalServerError","message":"Oops!"}'
         ));
         $this->setExpectedExceptionRegExp("ShortPixel\ServerException",
@@ -113,7 +113,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWithBadServerResponseShouldThrowServerException() {
-        CurlMock::register(API_URL, array(
+        CurlMock::register(Client::API_URL(), array(
             "status" => 543, "body" => '<!-- this is not json -->'
         ));
         $this->setExpectedException("ShortPixel\ServerException");
@@ -122,7 +122,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWithBadServerResponseShouldThrowExceptionWithMessage() {
-        CurlMock::register(API_URL, array(
+        CurlMock::register(Client::API_URL(), array(
             "status" => 543, "body" => '<!-- this is not json -->'
         ));
         if (PHP_VERSION_ID >= 50500) {
@@ -137,7 +137,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWithClientErrorShouldThrowClientException() {
-        CurlMock::register(API_URL, array(
+        CurlMock::register(Client::API_URL(), array(
             "status" => 492, "body" => '{"error":"BadRequest","message":"Oops!"}')
         );
         $this->setExpectedException("ShortPixel\ClientException");
@@ -146,7 +146,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWithClientErrorShouldThrowExceptionWithMessage() {
-        CurlMock::register(API_URL, array(
+        CurlMock::register(Client::API_URL(), array(
             "status" => 492, "body" => '{"error":"BadRequest","message":"Oops!"}'
         ));
         $this->setExpectedExceptionRegExp("ShortPixel\ClientException",
@@ -156,7 +156,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWithBadCredentialsShouldThrowAccountException() {
-        CurlMock::register(API_URL, array(
+        CurlMock::register(Client::API_URL(), array(
             "status" => 401, "body" => '{"error":"Unauthorized","message":"Oops!"}'
         ));
         $this->setExpectedException("ShortPixel\AccountException");
@@ -165,7 +165,7 @@ class ShortPixelClientTest extends TestCase {
     }
 
     public function testRequestWithBadCredentialsShouldThrowExceptionWithMessage() {
-        CurlMock::register(API_URL, array(
+        CurlMock::register(Client::API_URL(), array(
             "status" => 401, "body" => '{"error":"Unauthorized","message":"Oops!"}'
         ));
         $this->setExpectedExceptionRegExp("ShortPixel\AccountException",

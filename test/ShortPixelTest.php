@@ -11,7 +11,7 @@ class ClientTest extends TestCase {
     }
 
     public function testKeyShouldResetClientWithNewKey() {
-        CurlMock::register(API_URL, array("status" => 200));
+        CurlMock::register(Client::API_URL(), array("status" => 200));
         ShortPixel\setKey("abcde");
         ShortPixel\ShortPixel::getClient();
         ShortPixel\setKey("fghij");
@@ -22,7 +22,7 @@ class ClientTest extends TestCase {
     }
 
     public function testAppIdentifierShouldResetClientWithNewAppIdentifier() {
-        CurlMock::register(API_URL, array("status" => 200));
+        CurlMock::register(Client::API_URL(), array("status" => 200));
         ShortPixel\setKey("abcde");
         ShortPixel\setAppIdentifier("MyApp/1.0");
         ShortPixel\ShortPixel::getClient();
@@ -45,7 +45,7 @@ class ClientTest extends TestCase {
 
     public function testValidateWithValidKeyShouldReturnTrue() {
         ShortPixel\setKey("valid");
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 400, "body" => '{"error":"InputMissing","message":"No input"}'
         ));
         $this->assertTrue(ShortPixel\validate());
@@ -53,7 +53,7 @@ class ClientTest extends TestCase {
 
     public function testValidateWithErrorShouldThrowException() {
         ShortPixel\setKey("invalid");
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 401, "body" => '{"error":"Unauthorized","message":"Credentials are invalid"}'
         ));
         $this->setExpectedException("ShortPixel\AccountException");
@@ -61,7 +61,7 @@ class ClientTest extends TestCase {
     }
 
     public function testFromFileShouldReturnSource() {
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
         ShortPixel\setKey("valid");
@@ -69,7 +69,7 @@ class ClientTest extends TestCase {
     }
 
     public function testFromBufferShouldReturnSource() {
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
         ShortPixel\setKey("valid");
@@ -77,10 +77,10 @@ class ClientTest extends TestCase {
     }
 
     public function testFromUrlShouldReturnSource() {
-        CurlMock::register(Client::API_ENDPOINT, array(
+        CurlMock::register(Client::API_ENDPOINT(), array(
             "status" => 201, "headers" => array("Location" => "https://api.shortpixel.com/some/location")
         ));
         ShortPixel\setKey("valid");
-        $this->assertInstanceOf("ShortPixel\Source", ShortPixel\fromUrl("http://example.com/test.jpg"));
+        $this->assertInstanceOf("ShortPixel\Source", ShortPixel\fromUrls("http://example.com/test.jpg"));
     }
 }
