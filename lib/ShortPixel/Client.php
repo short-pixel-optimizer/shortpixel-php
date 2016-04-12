@@ -27,7 +27,7 @@ class Client {
             CURLOPT_BINARYTRANSFER => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HEADER => true,
-            CURLOPT_TIMEOUT => 10,
+            CURLOPT_TIMEOUT => 60,
             CURLOPT_CAINFO => self::caBundle(),
             CURLOPT_SSL_VERIFYPEER => false, //TODO true
             CURLOPT_SSL_VERIFYHOST => false, //TODO remove
@@ -67,7 +67,7 @@ class Client {
             curl_setopt($request, CURLOPT_POSTFIELDS, $body);
         }
 
-        $response = curl_exec($request);
+         $response = curl_exec($request);
 
         if (is_string($response)) {
             $status = curl_getinfo($request, CURLINFO_HTTP_CODE);

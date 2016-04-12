@@ -16,13 +16,13 @@ class Source {
 
     public static function fromUrls($urls) {
         if(!is_array($urls)) {
-            $images = array($urls);
+            $urls = array($urls);
         }
         if(count($urls) > 100) {
             throw new ClientException("Maximum 100 images allowed per call.");
         }
 
-        $images = array_map ('utf8_encode',  $images);
+        $images = array_map ('utf8_encode',  $urls);
         $data       = array(
             "plugin_version" => "shortpixel-sdk 1.0.0" ,
             "key" =>  ShortPixel::getKey(),

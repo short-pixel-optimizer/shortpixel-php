@@ -15,8 +15,9 @@ class ShortPixel {
         "resize_height" => null,
         "cmyk2rgb" => 1,
         "notify_me" => null, // should contain full URL of of notification script (notify.php)
-        "wait" => 29,
+        "wait" => 30,
         //local options
+        "total_wait" => 30,
         "base_url" => null, // base url of the images - used to generate the path for toFile by extracting from original URL and using the remaining path as relative path to base_path
         "base_path" => "/tmp", // base path for the saved files
         // "" => null,

@@ -34,6 +34,12 @@ class Commander {
         return $this;
     }
 
+    public function wait($seconds = 30) {
+        $seconds = max(0, intval($seconds));
+        $this->commands = array_merge($this->commands, array("wait" => min($seconds, 30), "total_wait" => $seconds));
+        return $this;
+    }
+
     public function notifyMe($callbackURL) {
         $this->commands = array_merge($this->commands, array("notify_me" => $callbackURL));
         return $this->execute();
@@ -43,17 +49,51 @@ class Commander {
         if (method_exists("ShortPixel\Result", $method)) {
             //execute the commands and forward to Result
             $return = $this->execute(true);
-            return call_user_func_array(array(new Result($this->commands, $return), $method), $args);
+            return call_user_func_array(array(new Result($this, $return), $method), $args);
         }
         else {
             throw new ClientException('Unknown function '.__CLASS__.':'.$method, E_USER_ERROR);
         }
     }
 
-    private function execute($wait = false){
-        if($wait) {
-            $this->data = array_merge($this->data, array("wait" => ShortPixel::opt("wait")));
+    public function execute($wait = false){
+        if($wait && !isset($this->commands['wait'])) {
+            $this->commands = array_merge($this->commands, array("wait" => ShortPixel::opt("wait"), "total_wait" => ShortPixel::opt("total_wait")));
         }
         return ShortPixel::getClient()->request("post", array_merge(ShortPixel::options(), $this->commands, $this->data));
     }
+
+    public function relaunch($pending) {
+        if(!count($pending)) return false; //nothing to do
+
+        //decrease the total wait and exit while if time expired
+        $this->commands["total_wait"] = max(0, $this->commands["total_wait"] - min($this->commands["wait"], 30));
+        if($this->commands['total_wait'] == 0) return false;
+
+        $urllist = array();
+        $type = isset($pending[0]->OriginalURL) ? 'URL' : 'FILE';
+        foreach($pending as $pend) {
+            if($type == 'URL') {
+                $urllist[] = $pend->OriginalURL;
+            } else {
+                //for now
+                throw new ClientException("Not implemented (Commander->execute())");
+            }
+        }
+        $this->commands["refresh"] = 0;
+        if($type == 'URL') {
+            $this->data["urllist"] = $urllist;
+        }
+        return $this->execute();
+
+    }
+
+    public function getCommands() {
+        return $this->commands;
+    }
+
+/*    public function setCommand($key, $value) {
+        return $this->commands[$key] = $value;
+    }
+*/
 }

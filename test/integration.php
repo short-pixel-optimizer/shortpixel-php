@@ -36,9 +36,9 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
         $this->assertNotContains("Copyright ShortPixel", $contents);
     }
 */
-    public function testShouldCompressLossyFromUrls() {
-        $source = \ShortPixel\fromUrls("https://raw.githubusercontent.com/short-pixel-optimizer/shortpixel-php/master/test/data/shortpixel.png");
-        $result = $source->toFiles(self::$tempDir);
+    public function testShouldCompressLossyFromUrl() {
+        $source = \ShortPixel\fromUrls("https://shortpixel.com/img/tests/wrapper/shortpixel.png");
+        $result = $source->refresh()->wait(300)->toFiles(self::$tempDir);
 
         if(count($result->succeeded)) {
             $data = $result->succeeded[0];
@@ -50,14 +50,27 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
 
             // removes EXIF
             $this->assertNotContains("Copyright ShortPixel", $contents);
+        } elseif(count($result->same)) {
+            $this->throwException("Optimized image is same size and shouldn't");
         }
     }
 
+    public function testShouldCompressLossyFromUrls()
+    {
+        $source = \ShortPixel\fromUrls(array(
+            "https://shortpixel.com/img/tests/wrapper/cc2.jpg",
+            "https://shortpixel.com/img/tests/wrapper/shortpixel.png"
+        ));
+        $result = $source->refresh()->wait(300)->toFiles(self::$tempDir);
 
+        if (count($result->succeeded) + count($result->pending) != 2) {
+            throw new \ShortPixel\ClientException("Some failed images");
+        }
+    }
     public function testShouldResizeJpg() {
-        $source = \ShortPixel\fromUrls("https://raw.githubusercontent.com/short-pixel-optimizer/shortpixel-php/master/test/data/cc.jpg");
+        $source = \ShortPixel\fromUrls("https://shortpixel.com/img/tests/wrapper/cc2.jpg");
         //$result = $source->resize(50, 50)->toFiles(self::$tempDir);
-        $result = $source->resize(100, 100)->toFiles(self::$tempDir);
+        $result = $source->refresh()->resize(100, 100)->wait(90)->toFiles(self::$tempDir);
 
         if(count($result->succeeded)) {
             $data = $result->succeeded[0];
@@ -76,8 +89,8 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
     }
 
     public function testShouldPreserveExifJpg() {
-        $source = \ShortPixel\fromUrls("https://raw.githubusercontent.com/short-pixel-optimizer/shortpixel-php/master/test/data/cc2.jpg");
-        $result = $source->keepExif()->toFiles(self::$tempDir);
+        $source = \ShortPixel\fromUrls("https://raw.githubusercontent.com/short-pixel-optimizer/shortpixel-php/master/test/data/cc.jpg");
+        $result = $source->refresh()->keepExif()->wait(90)->toFiles(self::$tempDir);
 
         if(count($result->succeeded)) {
             $data = $result->succeeded[0];
@@ -90,5 +103,28 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
             $exif = exif_read_data($savedFile);
             $this->assertContains("EXIF", $exif['SectionsFound']);
         }
+    }
+
+    public function testShouldReturnInaccessibleURL() {
+        $source = \ShortPixel\fromUrls("https://shortpixel.com/img/not-present.jpg");
+        $result = $source->toFiles(self::$tempDir);
+
+        if(!count($result->failed) || $result->failed[0]->Status->Code != -202) {
+            throw new \ShortPixel\ClientException("Image does not exist but did not show up as failed.");
+        }
+    }
+
+    public function testShouldReturnTooManyURLs() {
+        $tooMany = array();
+        for($i = 0; $i < 101; $i++) {
+            $tooMany[] = "https://shortpixel.com/img/not-present{$i}.jpg";
+        }
+        try {
+            \ShortPixel\fromUrls($tooMany);
+        }
+        catch (\ShortPixel\ClientException $ex) {
+            return;
+        }
+        throw new \ShortPixel\ClientException("More than 100 images but no exception thrown.");
     }
 }
