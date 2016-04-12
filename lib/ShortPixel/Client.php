@@ -10,7 +10,7 @@ class Client {
         return "https://api.shortpixel.com";
     }
     public static function API_ENDPOINT() {
-        return self::API_URL() . "/v2/reducer_dev.php";
+        return self::API_URL() . "/v2/reducer.php";
     }
 
     public static function userAgent() {

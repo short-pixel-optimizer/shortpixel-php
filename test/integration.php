@@ -52,6 +52,10 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
             $this->assertNotContains("Copyright ShortPixel", $contents);
         } elseif(count($result->same)) {
             $this->throwException("Optimized image is same size and shouldn't");
+        } elseif(count($result->pending)) {
+            echo("LossyFromURL - did not finish");
+        } else {
+            $this->throwException("Failed");
         }
     }
 
@@ -65,12 +69,14 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
 
         if (count($result->succeeded) + count($result->pending) != 2) {
             throw new \ShortPixel\ClientException("Some failed images");
+        } elseif(count($result->pending)) {
+            echo("LossyFromURLs - did not finish");
         }
     }
     public function testShouldResizeJpg() {
         $source = \ShortPixel\fromUrls("https://shortpixel.com/img/tests/wrapper/cc2.jpg");
         //$result = $source->resize(50, 50)->toFiles(self::$tempDir);
-        $result = $source->refresh()->resize(100, 100)->wait(90)->toFiles(self::$tempDir);
+        $result = $source->refresh()->resize(100, 100)->wait(120)->toFiles(self::$tempDir);
 
         if(count($result->succeeded)) {
             $data = $result->succeeded[0];
@@ -85,11 +91,17 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
             //EXIF is removed
             $exif = exif_read_data($savedFile);
             $this->assertNotContains("EXIF", $exif['SectionsFound']);
+        } elseif(count($result->same)) {
+            $this->throwException("Optimized image is same size and shouldn't");
+        } elseif(count($result->pending)) {
+            $this->throwException("testShouldResizeJpg - did not finish");
+        } else {
+            $this->throwException("Failed");
         }
     }
 
     public function testShouldPreserveExifJpg() {
-        $source = \ShortPixel\fromUrls("https://raw.githubusercontent.com/short-pixel-optimizer/shortpixel-php/master/test/data/cc.jpg");
+        $source = \ShortPixel\fromUrls("https://shortpixel.com/img/tests/wrapper/cc.jpg");
         $result = $source->refresh()->keepExif()->wait(90)->toFiles(self::$tempDir);
 
         if(count($result->succeeded)) {
@@ -102,6 +114,12 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
             //EXIF is removed
             $exif = exif_read_data($savedFile);
             $this->assertContains("EXIF", $exif['SectionsFound']);
+        } elseif(count($result->same)) {
+            $this->throwException("Optimized image is same size and shouldn't");
+        } elseif(count($result->pending)) {
+            $this->throwException("testShouldPreserveExifJpg - did not finish");
+        } else {
+            $this->throwException("Failed");
         }
     }
 
@@ -126,5 +144,8 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
             return;
         }
         throw new \ShortPixel\ClientException("More than 100 images but no exception thrown.");
+    }
+    public function testShouldReturnQuotaExceeded() {
+
     }
 }
