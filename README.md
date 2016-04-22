@@ -1,4 +1,4 @@
-[<img src="https://travis-ci.org/shortpixel/shortpixel-php.svg?branch=master" alt="Build Status">](https://travis-ci.org/shortpixel/shortpixel-php)
+[<img src="https://travis-ci.org/shortpixel/shortpixel-php.svg?branch=master" alt="Build Status">](https://travis-ci.org/short-pixel-optimizer/shortpixel-php)
 
 # ShortPixel SDK and API client for PHP
 
