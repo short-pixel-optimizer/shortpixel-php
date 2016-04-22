@@ -111,11 +111,13 @@ function setOptions($options) {
  * @throws ClientException
  */
 function fromFile($path) {
-    return (new Source)->fromFile($path);
+    $source = new Source();
+    return $source->fromFile($path);
 }
 
 function fromBuffer($string) {
-    return (new Source)->fromBuffer($string);
+    $source = new Source();
+    return $source->fromBuffer($string);
 }
 
 /**
