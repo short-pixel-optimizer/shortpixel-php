@@ -127,7 +127,8 @@ function fromBuffer($string) {
  * @throws ClientException
  */
 function fromUrls($urls) {
-    return (new Source)->fromUrls($urls);
+    $source = new Source();
+    return $source->fromUrls($urls);
 }
 
 function validate() {
