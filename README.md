@@ -36,7 +36,14 @@ require_once("vendor/autoload.php");
 
 ```php
 ShortPixel\setKey("YOUR_API_KEY");
-ShortPixel\fromFile("unoptimized.png")->toFile("optimized.png");
+// Compress with default settings
+ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->toFile("/path/to/save/to", "optimized.png");
+// Compress with default settings from a local file
+ShortPixel\fromFile("/path/to/your/local/unoptimized.png")->toFile("/path/to/save/to", "optimized.png");
+// Compress and resize
+ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->resize(100, 100)->toFile("/path/to/save/to", "optimized.png");
+// Keep the exif when compressing
+ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->keepExif()->toFile("/path/to/save/to", "optimized.png");
 ```
 
 ## Running tests

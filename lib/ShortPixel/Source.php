@@ -3,18 +3,24 @@
 namespace ShortPixel;
 
 class Source {
-    private $key, $urls;
+    private $urls;
 
-    public static function fromFile($path) {
+    public function fromFile($path) {
         if(!file_exists($path)) throw new ClientException("File not found");
-        return self::fromBuffer(file_get_contents($path));
+        $data       = array(
+            "plugin_version" => "shortpixel-sdk 0.1.0" ,
+            "key" =>  ShortPixel::getKey(),
+            "files" => array(basename($path) => $path)
+        );
+
+        return new Commander($data, $this);
     }
 
-    public static function fromBuffer($string) {
+    public function fromBuffer($string) {
         return new Result(array(), $string); //dummy
     }
 
-    public static function fromUrls($urls) {
+    public function fromUrls($urls) {
         if(!is_array($urls)) {
             $urls = array($urls);
         }
@@ -22,18 +28,13 @@ class Source {
             throw new ClientException("Maximum 100 images allowed per call.");
         }
 
-        $images = array_map ('utf8_encode',  $urls);
+        $this->urls = array_map ('utf8_encode',  $urls);
         $data       = array(
-            "plugin_version" => "shortpixel-sdk 1.0.0" ,
+            "plugin_version" => "shortpixel-sdk 0.1.0" ,
             "key" =>  ShortPixel::getKey(),
-            "urllist" => $images
+            "urllist" => $this->urls
         );
 
-        return new Commander($data);
-    }
-
-    public function __construct($key, $urls) {
-        $this->key = $key;
-        $this->urls = $urls;
+        return new Commander($data, $this);
     }
 }

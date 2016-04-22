@@ -18,11 +18,11 @@ class Exception extends \Exception {
         return new $klass($message, $type, $status);
     }
 
-    function __construct($message, $type = NULL, $status = NULL) {
+    function __construct($message, $code = 0, $parent = NULL, $type = NULL, $status = NULL) {
         if ($status) {
-            parent::__construct($message . " (HTTP " . $status . "/" . $type . ")");
+            parent::__construct($message . " (HTTP " . $status . "/" . $type . ")", $code, $parent);
         } else {
-            parent::__construct($message);
+            parent::__construct($message, $code, $parent);
         }
     }
 }
