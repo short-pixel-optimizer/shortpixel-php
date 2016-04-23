@@ -146,8 +146,12 @@ class Commander {
         return $this->commands;
     }
 
-/*    public function setCommand($key, $value) {
-        return $this->commands[$key] = $value;
+    public function getData() {
+        return $this->data;
     }
-*/
+
+    /*    public function setCommand($key, $value) {
+            return $this->commands[$key] = $value;
+        }
+    */
 }

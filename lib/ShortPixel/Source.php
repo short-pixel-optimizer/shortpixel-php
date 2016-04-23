@@ -23,7 +23,7 @@ class Source {
             $files[] = $path;
         }
         $data       = array(
-            "plugin_version" => "shortpixel-sdk 0.1.0" ,
+            "plugin_version" => "shortpixel-sdk " . VERSION,
             "key" =>  ShortPixel::getKey(),
             "files" => $files
         );
@@ -50,7 +50,7 @@ class Source {
 
         $this->urls = array_map ('utf8_encode',  $urls);
         $data       = array(
-            "plugin_version" => "shortpixel-sdk 0.1.0" ,
+            "plugin_version" => "shortpixel-sdk " . VERSION,
             "key" =>  ShortPixel::getKey(),
             "urllist" => $this->urls
         );
