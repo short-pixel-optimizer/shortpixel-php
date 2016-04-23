@@ -5,21 +5,41 @@ namespace ShortPixel;
 class Source {
     private $urls;
 
-    public function fromFile($path) {
-        if(!file_exists($path)) throw new ClientException("File not found");
+    /**
+     * @param $path - the file path on the local drive
+     * @return Commander - the class that handles the optimization commands
+     * @throws ClientException
+     */
+    public function fromFiles($paths) {
+        if(!is_array($paths)) {
+            $paths = array($paths);
+        }
+        if(count($paths) > 10) {
+            throw new ClientException("Maximum 10 local images allowed per call.");
+        }
+        $files = array();
+        foreach($paths as $path) {
+            if (!file_exists($path)) throw new ClientException("File not found: " . $path);
+            $files[] = $path;
+        }
         $data       = array(
             "plugin_version" => "shortpixel-sdk 0.1.0" ,
             "key" =>  ShortPixel::getKey(),
-            "files" => array(basename($path) => $path)
+            "files" => $files
         );
 
         return new Commander($data, $this);
     }
 
     public function fromBuffer($string) {
-        return new Result(array(), $string); //dummy
+        throw new ClientException("fromBuffer not implemented");
     }
 
+    /**
+     * @param $urls - the array of urls to be optimized
+     * @return Commander - the class that handles the optimization commands
+     * @throws ClientException
+     */
     public function fromUrls($urls) {
         if(!is_array($urls)) {
             $urls = array($urls);

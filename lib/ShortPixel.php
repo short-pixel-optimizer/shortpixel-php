@@ -110,9 +110,9 @@ function setOptions($options) {
  * @return Commander - the class that handles the optimization commands
  * @throws ClientException
  */
-function fromFile($path) {
+function fromFiles($path) {
     $source = new Source();
-    return $source->fromFile($path);
+    return $source->fromFiles($path);
 }
 
 function fromBuffer($string) {

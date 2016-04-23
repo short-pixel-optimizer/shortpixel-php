@@ -5,7 +5,6 @@ if (!getenv("SHORTPIXEL_KEY")) {
 }
 
 class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
-    static private $optimized;
     static private $tempDir;
 
     static public function setUpBeforeClass() {
@@ -19,7 +18,7 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
 
     public function testShouldCompressFromFile() {
         $unoptimizedPath = __DIR__ . "/data/shortpixel.png";
-        $result = \ShortPixel\fromFile($unoptimizedPath)->refresh()->wait(300)->toFiles(self::$tempDir);
+        $result = \ShortPixel\fromFiles($unoptimizedPath)->refresh()->wait(300)->toFiles(self::$tempDir);
 
         if(count($result->succeeded)) {
             $data = $result->succeeded[0];
@@ -37,6 +36,30 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
             echo("LossyFromURL - did not finish");
         } else {
             $this->throwException("Failed");
+        }
+    }
+
+    public function testShouldCompressFromFiles() {
+        $unoptimizedPath = __DIR__ . "/data/shortpixel.png";
+        $unoptimizedPath2 = __DIR__ . "/data/cc.jpg";
+        $result = \ShortPixel\fromFiles(array($unoptimizedPath, $unoptimizedPath2))->refresh()->wait(300)->toFiles(self::$tempDir);
+
+        if(count($result->succeeded) == 2) {
+            $data = $result->succeeded[0];
+            $savedFile = $data->SavedFile;
+            $size = filesize($savedFile);
+            $contents = fread(fopen($savedFile, "rb"), $size);
+
+            $this->assertEquals($data->LossySize, $size);
+
+            // removes EXIF
+            $this->assertNotContains("Copyright ShortPixel", $contents);
+        } elseif(count($result->failed)) {
+            $this->throwException("Failed");
+        } elseif(count($result->same)) {
+            $this->throwException("Optimized image is same size and shouldn't");
+        } elseif(count($result->pending)) {
+            echo("LossyFromURL - did not finish");
         }
     }
 

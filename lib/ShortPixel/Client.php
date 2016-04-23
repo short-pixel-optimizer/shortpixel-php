@@ -130,8 +130,9 @@ class Client {
     protected function prepareMultiPartRequest($request, $body, $header) {
         $files = array();
         $fileCount = 1;
-        foreach($body["files"] as $fileName => $filePath) {
+        foreach($body["files"] as $filePath) {
             $files["file" . $fileCount] = $filePath;
+            $fileCount++;
         }
         unset($body["files"]);
         $body["file_paths"] = json_encode($files);
