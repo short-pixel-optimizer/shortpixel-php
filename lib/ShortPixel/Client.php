@@ -14,7 +14,8 @@ class Client {
     }
 
     public static function API_UPLOAD_ENDPOINT() {
-        return self::API_URL() . "/v2/post-reducer.php";
+        //return self::API_URL() . "/v2/post-reducer-dev.php";
+        return self::API_URL() . "/v2/post-reducer-dev.php";
     }
 
     public static function userAgent() {
@@ -70,9 +71,14 @@ class Client {
             $body = NULL;
         }
 
-         $response = curl_exec($request);
+        for($i = 0; $i < 6; $i++) {
+            $response = curl_exec($request);
+            if(!curl_errno($request)) {
+                break;
+            }
+        }
         if(curl_errno($request)) {
-            throw new ConnectionException("Error while connecting: " . curl_error($request));
+            throw new ConnectionException("Error while connecting: " . curl_error($request) . "");
         }
 
         if (is_string($response)) {
@@ -99,6 +105,9 @@ class Client {
                 $fileMappings = array();
                 foreach($details as $detail) {
                     if(isset($files[$detail->Key])) {
+                        if(!isset($detail->Key)) {
+                            $detail->Key = "bau";
+                        }
                         $fileMappings[$detail->OriginalURL] = $files[$detail->Key];
                     }
                 }
@@ -242,28 +251,6 @@ class Client {
             ), $header),
         ));
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     protected static function parseHeaders($headers) {
         if (!is_array($headers)) {

@@ -53,6 +53,9 @@ class Result {
             }
             // No API level error
             foreach($data as $item) {
+
+                $targetPath = $path;
+
                 if($item->Status->Code == 1) {
                     $found = $this->findItem($item, $pending, "OriginalURL");
                     if(!$found) {
@@ -76,7 +79,7 @@ class Result {
                     $originalPath = isset($this->data->fileMappings[$item->OriginalURL]) ? $this->data->fileMappings[$item->OriginalURL] : false;
                     //
                     if(ShortPixel::opt("base_source_path") && $originalPath) {
-                        $origPathParts = explode('/', str_replace(ShortPixel::opt("base_source_path"), "", $originalPath));
+                        $origPathParts = explode('/', str_replace(ShortPixel::opt("base_source_path"). "/", "", $originalPath));
                         $origFileName = $origPathParts[count($origPathParts) - 1];
                         unset($origPathParts[count($origPathParts) - 1]);
                         $relativePath = implode('/', $origPathParts);
@@ -104,15 +107,42 @@ class Result {
                 } else { // something is wrong
                     throw(new ClientException("Malformed response. Please contact support."));
                 }
-                if(!$path) {
-                    $path = (ShortPixel::opt("base_path") ?: __DIR__) . '/' . $relativePath;
+                if(!$targetPath) { //se pare ca trebuie oricum
+                    $targetPath = (ShortPixel::opt("base_path") ?: __DIR__) . '/' . $relativePath;
+                } elseif(ShortPixel::opt("base_source_path") && strlen($relativePath)) {
+                    $targetPath .= '/' . $relativePath;
                 }
 
-                $target = $path . '/' . ($fileName ? $fileName . ($i > 0 ? "_" . $i : "") : $origFileName);
-                ShortPixel::getClient()->download($cmds["lossy"] == 1 ? $item->LossyURL : $item->LosslessURL, $target);
+                $target = $targetPath . '/' . ($fileName ? $fileName . ($i > 0 ? "_" . $i : "") : $origFileName);
 
+                ShortPixel::getClient()->download($cmds["lossy"] == 1 ? $item->LossyURL : $item->LosslessURL, $target);
                 $item->SavedFile = $target;
+
+                if(isset($item->WebPLossyURL) && $item->WebPLossyURL !== 'NA') { //a WebP image was generated as per the options, download and save it too
+                    $webpTarget = $targetWebPFile = dirname($target) . DIRECTORY_SEPARATOR . basename($target, '.' . pathinfo($target, PATHINFO_EXTENSION)) . ".webp";
+                    ShortPixel::getClient()->download($cmds["lossy"] == 1 ? $item->WebPLossyURL : $item->WebPLosslessURL, $webpTarget);
+                    $item->WebPSavedFile = $webpTarget;
+                }
+
                 $succeeded[] = $item;
+
+                $pers = ShortPixel::getPersister();
+                if($pers) {
+                    $pers->setOptimized($target, array(
+                        "compressionType" => $cmds["lossy"] == 1 ? 'lossy' : 'lossless',
+                        "keepExif" => isset($cmds['keep_exif']) ? $cmds['keep_exif'] : ShortPixel::opt("keep_exif"),
+                        "cmyk2rgb" => isset($cmds['cmyk2rgb']) ? $cmds['cmyk2rgb'] : ShortPixel::opt("cmyk2rgb"),
+                        "resize" => isset($cmds['resize_width']) ? $cmds['resize_width'] : ShortPixel::opt("resize_width") ? 1 : 0,
+                        "resizeWidth" => isset($cmds['resize_width']) ? $cmds['resize_width'] : ShortPixel::opt("resize_width"),
+                        "resizeHeight" => isset($cmds['resize_height']) ? $cmds['resize_height'] : ShortPixel::opt("resize_height"),
+                        "percent" => $item->PercentImprovement,
+                        "optimizedSize" => $cmds["lossy"] == 1 ? $item->LossySize : $item->LosslessSize,
+                        "changeDate" => time(),
+                        "message" => null
+                    ));
+                }
+
+
                 //remove from pending
                 $this->removeItem($item, $pending, "OriginalURL"); //TODO check if fromURL and if not, use file path
                 $i++;

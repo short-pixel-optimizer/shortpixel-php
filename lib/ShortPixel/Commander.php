@@ -50,6 +50,15 @@ class Commander {
     }
 
     /**
+     * @param bool|true $keep
+     * @return $this
+     */
+    public function generateWebP($generate = true) {
+        $this->commands = array_merge($this->commands, array("convertto" => $generate ? urlencode("+webp") : ''));
+        return $this;
+    }
+
+    /**
      * @param bool|true $refresh - if true, tells the server to discard the already optimized image and redo the optimization with the new settings.
      * @return $this
      */

@@ -2,9 +2,15 @@
 
 namespace ShortPixel;
 
-const VERSION = "0.5.0";
+const VERSION = "0.7.0";
 
 class ShortPixel {
+    const MAX_ALLOWED_FILES_PER_CALL = 10;
+    const MAX_RETRIES = 3;
+
+    const LOSSY_EXIF_TAG = "SPXLY";
+    const LOSSLESS_EXIF_TAG = "SPXLL";
+
     private static $key = NULL;
     private static $client = NULL;
     private static $options = array(
@@ -13,15 +19,26 @@ class ShortPixel {
         "resize_width" => null, // in pixels. null means no resize
         "resize_height" => null, // in pixels. null means no resize
         "cmyk2rgb" => 1, // convert CMYK to RGB: 1 yes, 0 no
-        "notify_me" => null, // should contain full URL of of notification script (notify.php)
+        "convertto" => "", // if '+webp' then also the WebP version will be generated
+        // **** return options ****
+        "notify_me" => null, // should contain full URL of of notification script (notify.php) - to be implemented
         "wait" => 30, // seconds
         // **** local options ****
         "total_wait" => 30, //seconds
         "base_url" => null, // base url of the images - used to generate the path for toFile by extracting from original URL and using the remaining path as relative path to base_path
         "base_source_path" => "", // base path of the local files
         "base_path" => "/tmp", // base path to save the files
+        // **** persist options ****
+        "persist_type" => null, // null - don't persist, otherwise "text" (.shortpixel text file in each folder), "exif" (mark in the EXIF that the image has been optimized) or "mysql" (to be implemented)
+        "persist_name" => ".shortpixel",
+        //"persist_user" => "user", // only for mysql
+        //"persist_pass" => "pass" // only for mysql
         // "" => null,
     );
+
+    public static $PROCESSABLE_EXTENSIONS = array('jpg', 'jpeg', 'jpe', 'jfif', 'jif', 'gif', 'png', 'pdf');
+
+    private static $persistersRegistry = array();
 
     /**
      * @param $key - the ShortPixel API Key
@@ -46,7 +63,7 @@ class ShortPixel {
         "base_path" => "/tmp", // base path for the saved files
      */
     public static function setOptions($options) {
-        array_merge(self::$options, $options);
+        self::$options = array_merge(self::$options, $options);
     }
 
     /**
@@ -86,6 +103,39 @@ class ShortPixel {
 
         return self::$client;
     }
+
+    public static function getPersister($context = null) {
+        if(!self::$options["persist_type"]) {
+            return null;
+        }
+        if($context && isset(self::$persistersRegistry[self::$options["persist_type"] . $context])) {
+            return self::$persistersRegistry[self::$options["persist_type"] . $context];
+        }
+
+        $persister = null;
+        switch(self::$options["persist_type"]) {
+            case "exif":
+                $persister = new persist\ExifPersister(self::$options);
+                break;
+            case "mysql":
+                return null;
+            case "text":
+                $persister = new persist\TextPersister(self::$options);
+                break;
+            default:
+                throw new PersistException("Unknown persist type: " . self::$options["persist_type"]);
+        }
+
+        if($context) {
+            self::$persistersRegistry[self::$options["persist_type"] . $context] = $persister;
+        }
+        return $persister;
+    }
+
+    static public function isProcessable($path) {
+        return in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), \ShortPixel\ShortPixel::$PROCESSABLE_EXTENSIONS);
+    }
+
 }
 
 /**
@@ -105,7 +155,7 @@ function setOptions($options) {
 }
 
 /**
- * Stub for Source::fromFile
+ * Stub for Source::fromFiles
  * @param $path - the file path on the local drive
  * @return Commander - the class that handles the optimization commands
  * @throws ClientException
@@ -113,6 +163,17 @@ function setOptions($options) {
 function fromFiles($path) {
     $source = new Source();
     return $source->fromFiles($path);
+}
+
+/**
+ * Stub for Source::fromFolder
+ * @param $path - the file path on the local drive
+ * @return Commander - the class that handles the optimization commands
+ * @throws ClientException
+ */
+function fromFolder($path) {
+    $source = new Source();
+    return $source->fromFolder($path);
 }
 
 function fromBuffer($string) {
@@ -129,6 +190,17 @@ function fromBuffer($string) {
 function fromUrls($urls) {
     $source = new Source();
     return $source->fromUrls($urls);
+}
+
+/**
+ */
+function isOptimized($path) {
+    $persist = ShortPixel::getPersister($path);
+    if($persist) {
+        return $persist->isOptimized($path);
+    } else {
+        throw new Exception("No persister available");
+    }
 }
 
 function validate() {

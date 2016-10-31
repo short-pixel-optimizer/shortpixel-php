@@ -31,3 +31,5 @@ class AccountException extends Exception {}
 class ClientException extends Exception {}
 class ServerException extends Exception {}
 class ConnectionException extends Exception {}
+class PersistException extends Exception {}
+

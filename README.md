@@ -32,18 +32,46 @@ Use autoloading to make the client available in PHP:
 require_once("vendor/autoload.php");
 ```
 
+Get your API Key from https://shortpixel.com/free-sign-up
+
 ## Usage
 
 ```php
+// Set up the API Key. 
 ShortPixel\setKey("YOUR_API_KEY");
+
 // Compress with default settings
+ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->toFile("/path/to/save/to");
+// Compress with default settings but specifying a different file name
 ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->toFile("/path/to/save/to", "optimized.png");
+
 // Compress with default settings from a local file
-ShortPixel\fromFile("/path/to/your/local/unoptimized.png")->toFile("/path/to/save/to", "optimized.png");
+ShortPixel\fromFile("/path/to/your/local/unoptimized.png")->toFile("/path/to/save/to");
+// Compress with default settings from several local files
+ShortPixel\fromFiles(array("/path/to/your/local/unoptimized1.png", "/path/to/your/local/unoptimized2.png"))->toFile("/path/to/save/to");
+
 // Compress and resize
 ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->resize(100, 100)->toFile("/path/to/save/to", "optimized.png");
 // Keep the exif when compressing
 ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->keepExif()->toFile("/path/to/save/to", "optimized.png");
+// Also generate and save a WebP version of the file - the WebP file will be saved next to the optimized file, with  same basename and .webp extension
+ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->keepExif()->toFile("/path/to/save/to", "optimized.png");
+
+//Compress from a folder - the status of the compressed images is saved in a text file named .shortpixel saved in the folder
+\ShortPixel\ShortPixel::setOptions(array("persist_type" => "text"));
+//Each call will optimize up to 10 images from the specified folder and mark in the .shortpixel file. 
+//It automatically recurses a subfolder when finds it
+//Set wait time to 300 to allow enough time for the images to be processed
+$ret = ShortPixel\fromFolder("/path/to/your/local/folder")->wait(300)->toFile("/path/to/save/to");
+//A simple loop to optimize all images from a folder
+$stop = false;
+while(!$stop) {
+    $ret = ShortPixel\fromFolder("/path/to/your/local/folder")->wait(300)->toFile("/path/to/save/to");
+    if(count($ret->->succeeded) + count($ret->failed) + count($ret->same) + count($ret->pending) == 0) {
+        $stop = true;
+    }
+}
+//Alternatively, you might want to add the call to a cron job
 ```
 
 ## Running tests
