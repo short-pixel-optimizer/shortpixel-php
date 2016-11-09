@@ -113,6 +113,10 @@ class Result {
                     $targetPath .= '/' . $relativePath;
                 }
 
+                if(!is_dir($targetPath)) {
+                    throw new ClientException("The destination path cannot be found.");
+                }
+
                 $target = $targetPath . '/' . ($fileName ? $fileName . ($i > 0 ? "_" . $i : "") : $origFileName);
 
                 ShortPixel::getClient()->download($cmds["lossy"] == 1 ? $item->LossyURL : $item->LosslessURL, $target);
