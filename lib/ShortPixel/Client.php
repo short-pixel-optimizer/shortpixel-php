@@ -104,10 +104,7 @@ class Client {
             if($files) {
                 $fileMappings = array();
                 foreach($details as $detail) {
-                    if(isset($files[$detail->Key])) {
-                        if(!isset($detail->Key)) {
-                            $detail->Key = "bau";
-                        }
+                    if(isset($detail->Key) && isset($files[$detail->Key])) {
                         $fileMappings[$detail->OriginalURL] = $files[$detail->Key];
                     }
                 }

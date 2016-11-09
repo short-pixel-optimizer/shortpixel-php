@@ -1,7 +1,7 @@
 <?php
 require_once("../lib/shortpixel-php-req.php");
 
-ShortPixel\setKey("D8EIHTnTRIA3R6Vqr9IW");
+ShortPixel\setKey("<YOUR API KEY HERE>");
 $tmpFolder = tempnam(sys_get_temp_dir(), "shortpixel-php");
 echo("Temp folder: " . $tmpFolder);
 if(file_exists($tmpFolder)) unlink($tmpFolder);
