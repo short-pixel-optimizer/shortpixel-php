@@ -32,6 +32,12 @@ Use autoloading to make the client available in PHP:
 require_once("vendor/autoload.php");
 ```
 
+Alternatively, if you don't use Composer, add the following require to your PHP code:
+
+```php
+require_once("lib/shortpixel-php-req.php");_
+```
+
 Get your API Key from https://shortpixel.com/free-sign-up
 
 ## Usage

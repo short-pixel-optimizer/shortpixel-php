@@ -165,6 +165,10 @@ function fromFiles($path) {
     return $source->fromFiles($path);
 }
 
+function fromFile($path) {
+    return fromFiles($path);
+}
+
 /**
  * Stub for Source::fromFolder
  * @param $path - the file path on the local drive
