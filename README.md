@@ -63,7 +63,7 @@ ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->keepExif()->toFile
 // Also generate and save a WebP version of the file - the WebP file will be saved next to the optimized file, with  same basename and .webp extension
 ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->keepExif()->toFile("/path/to/save/to", "optimized.png");
 
-//Compress from a folder - the status of the compressed images is saved in a text file named .shortpixel saved in the folder
+//Compress from a folder - the status of the compressed images is saved in a text file named .shortpixel in each image folder
 \ShortPixel\ShortPixel::setOptions(array("persist_type" => "text"));
 //Each call will optimize up to 10 images from the specified folder and mark in the .shortpixel file. 
 //It automatically recurses a subfolder when finds it
