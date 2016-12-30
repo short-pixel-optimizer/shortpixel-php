@@ -126,26 +126,30 @@ class Commander {
      * @return bool|mixed
      * @throws ClientException
      */
-    public function relaunch($pending) {
-        if(!count($pending)) return false; //nothing to do
+    public function relaunch($ctx) {
+        if(!count($ctx->body) && !count($this->data["files"])) return false; //nothing to do
 
         //decrease the total wait and exit while if time expired
         $this->commands["total_wait"] = max(0, $this->commands["total_wait"] - min($this->commands["wait"], 30));
         if($this->commands['total_wait'] == 0) return false;
 
-        $urllist = array();
-        $type = isset($pending[0]->OriginalURL) ? 'URL' : 'FILE';
-        foreach($pending as $pend) {
+        $pendingURLs = array();
+        //currently we relaunch only if we have the URLs that for posted files should be returned in the first pass.
+        $type = isset($ctx->body[0]->OriginalURL) ? 'URL' : 'FILE';
+        foreach($ctx->body as $pend) {
             if($type == 'URL') {
-                $urllist[] = $pend->OriginalURL;
+                if($pend->OriginalURL && !in_array($pend->OriginalURL, $pendingURLs)) {
+                    $pendingURLs[$pend->OriginalURL] = $pend->SavedFile;
+                }
             } else {
                 //for now
                 throw new ClientException("Not implemented (Commander->execute())");
             }
         }
         $this->commands["refresh"] = 0;
-        if($type == 'URL') {
-            $this->data["urllist"] = $urllist;
+        if($type == 'URL' && count($pendingURLs)) {
+            $this->data["pendingURLs"] = $pendingURLs;
+            //$this->data["fileMappings"] = $ctx->fileMappings;
         }
         return $this->execute();
 
@@ -163,4 +167,20 @@ class Commander {
             return $this->commands[$key] = $value;
         }
     */
+
+    public function isDone($item) {
+        //remove from local files list
+        if(isset($this->data["files"]) && is_array($this->data["files"])) {
+            if (isset($item->SavedFile)) {
+                $this->data["files"] = array_diff($this->data["files"], array($item->SavedFile));
+            }
+            elseif(isset($item->OriginalURL) && isset($this->data["pendingURLs"][$item->OriginalURL])) {
+                $this->data["files"] = array_diff($this->data["files"], array($this->data["pendingURLs"][$item->OriginalURL]));
+            }
+        }
+        //remove from pending URLs
+        if(isset($item->OriginalURL) && isset($this->data["pendingURLs"][$item->OriginalURL])) {
+            unset($this->data["pendingURLs"][$item->OriginalURL]);
+        }
+    }
 }

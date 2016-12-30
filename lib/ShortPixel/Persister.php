@@ -10,10 +10,11 @@ interface Persister {
     function __construct($options);
     function isOptimized($path);
     function getOptimizationData($path);
+    function info($path);
     function getTodo($path, $count, $nextFollows = false);
     function getNextTodo($path, $count);
     function doneGet();
-    function setPending($path);
+    function setPending($path, $optData);
     function setOptimized($path, $optData);
     function setFailed($path, $optData);
 }

@@ -15,7 +15,7 @@ class Exception extends \Exception {
         }
 
         if (empty($message)) $message = "No message was provided";
-        return new $klass($message, $type, $status);
+        return new $klass($type . ": " . $message, $status);
     }
 
     function __construct($message, $code = 0, $parent = NULL, $type = NULL, $status = NULL) {
@@ -28,7 +28,9 @@ class Exception extends \Exception {
 }
 
 class AccountException extends Exception {}
-class ClientException extends Exception {}
+class ClientException extends Exception {
+    const NO_FILE_FOUND = -1;
+}
 class ServerException extends Exception {}
 class ConnectionException extends Exception {}
 class PersistException extends Exception {}

@@ -7,23 +7,23 @@ namespace ShortPixel;
  * @package ShortPixel
  */
 class Result {
-    protected $commander, $data;
+    protected $commander, $ctx;
 
-    public function __construct($commander, $data) {
+    public function __construct($commander, $context) {
         $this->commander = $commander;
-        $this->data = $data;
+        $this->ctx = $context;
     }
 
     /**
      * returns the metadata provided by the optimizer
      * @return mixed
      */
-    public function data() {
-        return $this->data;
+    public function ctx() {
+        return $this->ctx;
     }
 
     public function toBuffer() {
-        return $this->data;
+        return $this->ctx;
     }
 
     /**
@@ -34,49 +34,34 @@ class Result {
      * @throws ClientException
      */
     public function toFiles($path = null, $fileName = null) {
+
         if($path) {
             if(substr($path, 0, 1) !== '/') {
                 $path = (ShortPixel::opt("base_path") ?: __DIR__) . '/' . $path;
             }
         }
-        //$body = $this->data->body;
         $i = 0;
         $succeeded = $pending = $failed = $same = array();
 
         $cmds = $this->commander->getCommands();
 
         while(true) {
-            $data = $this->data->body;
+            $items = $this->ctx->body;
+            if(!is_array($items) || count($items) == 0) {
+//                return (object)array( 'status' => array('code' => 2, 'message' => 'Folder completely optimized'));
+            }
             //check API key errors
-            if(isset($data->Status->Code) && $data->Status->Code < 0) {
-                throw new AccountException($data->Status->Message, $data->Status->Code);
+            if(isset($items->Status->Code) && $items->Status->Code < 0) {
+                throw new AccountException($items->Status->Message, $items->Status->Code);
             }
             // No API level error
-            foreach($data as $item) {
+            $retry = false;
+            foreach($items as $item) {
 
                 $targetPath = $path;
 
-                if($item->Status->Code == 1) {
-                    $found = $this->findItem($item, $pending, "OriginalURL");
-                    if(!$found) {
-                        $pending[] = $item;
-                    }
-                    continue;
-                }
-                elseif ($item->Status->Code != 2) {
-                    $failed[] = $item;
-                    $this->removeItem($item, $pending, "OriginalURL");
-                    continue;
-                }
-                elseif($item->PercentImprovement == 0) {
-                    $same[] = $item;
-                    $this->removeItem($item, $pending, "OriginalURL");
-                    continue;
-                }
-
-                //Now that's an optimized image indeed
-                if($this->data->fileMappings) { // it was optimized from a local file, fileMappings contains the mappings from the local files to the internal ShortPixel URLs
-                    $originalPath = isset($this->data->fileMappings[$item->OriginalURL]) ? $this->data->fileMappings[$item->OriginalURL] : false;
+                if($this->ctx->fileMappings && count($this->ctx->fileMappings)) { // it was optimized from a local file, fileMappings contains the mappings from the local files to the internal ShortPixel URLs
+                    $originalPath = isset($this->ctx->fileMappings[$item->OriginalURL]) ? $this->ctx->fileMappings[$item->OriginalURL] : false;
                     //
                     if(ShortPixel::opt("base_source_path") && $originalPath) {
                         $origPathParts = explode('/', str_replace(ShortPixel::opt("base_source_path"). "/", "", $originalPath));
@@ -113,61 +98,133 @@ class Result {
                     $targetPath .= '/' . $relativePath;
                 }
 
+                $target = $targetPath . '/' . ($fileName ? $fileName . ($i > 0 ? "_" . $i : "") : $origFileName);
+
+                $item->SavedFile = $target;
+
+                //TODO: that one is a hack until the API waiting bug is fixed. Afterwards, just throw an exception
+                if($item->Status->Code == 2 && $item->LossySize == 0  && $item->LoselessSize == 0 ) {
+                    $item->Status->Code = 1;
+                }
+
+                if($item->Status->Code == 1) {
+                    $found = $this->findItem($item, $pending, "OriginalURL");
+                    if(!$found) {
+                        $pending[] = $item;
+                        $this->persist($item, $cmds, 'pending');
+                    }
+                    continue;
+                }
+                elseif ($item->Status->Code != 2) {
+                    $this->removeItem($item, $pending, "OriginalURL");
+                    if($item->Status->Code == -102 || $item->Status->Code == -106) {
+                        // -102 is expired, means we need to resend the image through post
+                        // -106 is file was not downloaded due to access restrictions - if these are uploaded files it looks like a bug in the API
+                        //      TODO find and fix
+                        if($this->ctx->fileMappings[$item->OriginalURL]) {
+                            unset($this->ctx->fileMappings[$item->OriginalURL]);
+                        }
+                        $item->OriginalURL = false;
+                    }
+
+                    $status = $this->persist($item, $cmds, 'error');
+                    if($status == 'pending') {
+                        $retry = true;
+                    } else {
+                        $failed[] = $item;
+                    }
+                    continue;
+                }
+                elseif($item->PercentImprovement == 0) {
+                    $same[] = $item;
+                    $this->removeItem($item, $pending, "OriginalURL");
+                    $this->persist($item, $cmds);
+                    continue;
+                }
+
                 if(!is_dir($targetPath)) {
                     throw new ClientException("The destination path cannot be found.");
                 }
 
-                $target = $targetPath . '/' . ($fileName ? $fileName . ($i > 0 ? "_" . $i : "") : $origFileName);
-
-                ShortPixel::getClient()->download($cmds["lossy"] == 1 ? $item->LossyURL : $item->LosslessURL, $target);
-                $item->SavedFile = $target;
+                //Now that's an optimized image indeed
+                try {
+                    ShortPixel::getClient()->download($cmds["lossy"] == 1 ? $item->LossyURL : $item->LosslessURL, $target);
+                    $item->SavedFile = $target;
+                } catch(ClientException $e) {
+                    $this->persist($item, $cmds, 'error');
+                    continue;
+                }
 
                 if(isset($item->WebPLossyURL) && $item->WebPLossyURL !== 'NA') { //a WebP image was generated as per the options, download and save it too
                     $webpTarget = $targetWebPFile = dirname($target) . DIRECTORY_SEPARATOR . basename($target, '.' . pathinfo($target, PATHINFO_EXTENSION)) . ".webp";
-                    ShortPixel::getClient()->download($cmds["lossy"] == 1 ? $item->WebPLossyURL : $item->WebPLosslessURL, $webpTarget);
-                    $item->WebPSavedFile = $webpTarget;
+                    try {
+                        ShortPixel::getClient()->download($cmds["lossy"] == 1 ? $item->WebPLossyURL : $item->WebPLosslessURL, $webpTarget);
+                        $item->WebPSavedFile = $webpTarget;
+                    } catch(ClientException $e) {
+                        $this->persist($item, $cmds, 'error');
+                        continue;
+                    }
                 }
 
                 $succeeded[] = $item;
 
-                $pers = ShortPixel::getPersister();
-                if($pers) {
-                    $pers->setOptimized($target, array(
-                        "compressionType" => $cmds["lossy"] == 1 ? 'lossy' : 'lossless',
-                        "keepExif" => isset($cmds['keep_exif']) ? $cmds['keep_exif'] : ShortPixel::opt("keep_exif"),
-                        "cmyk2rgb" => isset($cmds['cmyk2rgb']) ? $cmds['cmyk2rgb'] : ShortPixel::opt("cmyk2rgb"),
-                        "resize" => isset($cmds['resize_width']) ? $cmds['resize_width'] : ShortPixel::opt("resize_width") ? 1 : 0,
-                        "resizeWidth" => isset($cmds['resize_width']) ? $cmds['resize_width'] : ShortPixel::opt("resize_width"),
-                        "resizeHeight" => isset($cmds['resize_height']) ? $cmds['resize_height'] : ShortPixel::opt("resize_height"),
-                        "percent" => $item->PercentImprovement,
-                        "optimizedSize" => $cmds["lossy"] == 1 ? $item->LossySize : $item->LosslessSize,
-                        "changeDate" => time(),
-                        "message" => null
-                    ));
-                }
-
+                $this->persist($item, $cmds);
 
                 //remove from pending
                 $this->removeItem($item, $pending, "OriginalURL"); //TODO check if fromURL and if not, use file path
+                //tell the commander that the item is done so it won't be relaunched
+                $this->commander->isDone($item);
                 $i++;
             }
 
-            //For the pending items relaunch
-            if(count($pending)) {
-                $this->data = $this->commander->relaunch($pending);
+            //For the pending items relaunch, or if any item that needs to be retried from file (-102 or -106)
+            if($retry || count($pending)) {
+                $this->ctx = $this->commander->relaunch((object)array("body" => $pending, "headers" => $this->ctx->headers, "fileMappings" => $this->ctx->fileMappings));
             } else {
                 break;
             }
-            if($this->data == false) { //time's up
+            if($this->ctx == false) { //time's up
                 break;
             }
         }
 
         return (object) array(
+            'status' => array('code' => 1, 'message' => 'pending'),
             'succeeded' => $succeeded,
             'pending' => $pending,
             'failed' => $failed,
             'same' => $same
+        );
+    }
+
+    private function persist($item, $cmds, $status = 'success') {
+        $pers = ShortPixel::getPersister();
+        if($pers) {
+            $optParams = $this->optimizationParams($item, $cmds);
+            if($status == 'pending') {
+                $optParams['message'] = $item->OriginalURL;
+                return $pers->setPending($item->SavedFile, $optParams);
+            } elseif ($status == 'error') {
+                $optParams['message'] = $item->Status->Message;
+                return $pers->setFailed($item->SavedFile, $optParams);
+            } else {
+                return $pers->setOptimized($item->SavedFile, $optParams);
+            }
+        }
+    }
+
+    private function optimizationParams($item, $cmds) {
+        return array(
+            "compressionType" => $cmds["lossy"] == 1 ? 'lossy' : 'lossless',
+            "keepExif" => isset($cmds['keep_exif']) ? $cmds['keep_exif'] : ShortPixel::opt("keep_exif"),
+            "cmyk2rgb" => isset($cmds['cmyk2rgb']) ? $cmds['cmyk2rgb'] : ShortPixel::opt("cmyk2rgb"),
+            "resize" => isset($cmds['resize_width']) ? $cmds['resize_width'] : ShortPixel::opt("resize_width") ? 1 : 0,
+            "resizeWidth" => isset($cmds['resize_width']) ? $cmds['resize_width'] : ShortPixel::opt("resize_width"),
+            "resizeHeight" => isset($cmds['resize_height']) ? $cmds['resize_height'] : ShortPixel::opt("resize_height"),
+            "percent" => isset($item->PercentImprovement) ? $item->PercentImprovement : 0,
+            "optimizedSize" => $item->Status->Code == 2 ? ($cmds["lossy"] == 1 ? $item->LossySize : $item->LosslessSize) : 0,
+            "changeDate" => time(),
+            "message" => null
         );
     }
 

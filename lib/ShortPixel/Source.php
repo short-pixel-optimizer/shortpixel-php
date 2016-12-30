@@ -11,7 +11,7 @@ class Source {
      * @return Commander - the class that handles the optimization commands
      * @throws ClientException
      */
-    public function fromFiles($paths, $basePath = null) {
+    public function fromFiles($paths, $basePath = null, $pending = null) {
         if(!is_array($paths)) {
             $paths = array($paths);
         }
@@ -24,12 +24,29 @@ class Source {
             $files[] = $path;
         }
         $data       = array(
-            "plugin_version" => "shortpixel-sdk " . VERSION,
+            "plugin_version" => LIBRARY_CODE . " " . VERSION,
             "key" =>  ShortPixel::getKey(),
             "files" => $files
         );
+        if($pending && count($pending)) {
+            $data["pendingURLs"] = $pending;
+        }
 
         return new Commander($data, $this);
+    }
+
+    /**
+     * returns the optimization counters of the folder and subfolders
+     * @param $path
+     * @return (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
+     * @throws PersistException
+     */
+    public function folderInfo($path){
+        $persister = ShortPixel::getPersister($path);
+        if(!$persister) {
+            throw new PersistException("Persist is not enabled in options, needed for fetching folder info");
+        }
+        return $persister->info($path);
     }
 
     /**
@@ -46,7 +63,7 @@ class Source {
         $paths = $persister->getTodo($path, ShortPixel::MAX_ALLOWED_FILES_PER_CALL);
         if($paths) {
             ShortPixel::setOptions(array("base_source_path" => $path));
-            return $this->fromFiles($paths);
+            return $this->fromFiles($paths->files, null, $paths->filesPending);
         }
         throw new ClientException("Couldn't find any processable file at given path.");
     }
@@ -88,7 +105,7 @@ class Source {
 
         $this->urls = array_map ('utf8_encode',  $urls);
         $data       = array(
-            "plugin_version" => "shortpixel-sdk " . VERSION,
+            "plugin_version" => LIBRARY_CODE . " " . VERSION,
             "key" =>  ShortPixel::getKey(),
             "urllist" => $this->urls
         );

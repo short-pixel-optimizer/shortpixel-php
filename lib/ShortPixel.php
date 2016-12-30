@@ -2,7 +2,8 @@
 
 namespace ShortPixel;
 
-const VERSION = "0.7.0";
+const LIBRARY_CODE = "sp-sdk";
+const VERSION = "0.8.0";
 
 class ShortPixel {
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -16,6 +17,7 @@ class ShortPixel {
     private static $options = array(
         "lossy" => 1, // 1 - lossy, 0 - lossless
         "keep_exif" => 0, // 1 - EXIF is preserved, 0 - EXIF is removed
+        "resize" => 0, // 0 - don't resize, 1 - outer resize, 3 - inner resize
         "resize_width" => null, // in pixels. null means no resize
         "resize_height" => null, // in pixels. null means no resize
         "cmyk2rgb" => 1, // convert CMYK to RGB: 1 yes, 0 no
@@ -94,7 +96,7 @@ class ShortPixel {
      */
     public static function getClient() {
         if (!self::$key) {
-            throw new AccountException("Provide an API key with ShortPixel\setKey(...)");
+            throw new AccountException("Provide an API key with ShortPixel\setKey(...)", -6);
         }
 
         if (!self::$client) {
@@ -170,6 +172,17 @@ function fromFile($path) {
 }
 
 /**
+ * Stub for Source::folderInfo
+ * @param $path - the file path on the local drive
+* @return (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
+ * @throws ClientException
+ */
+function folderInfo($path) {
+    $source = new Source();
+    return $source->folderInfo($path);
+}
+
+/**
  * Stub for Source::fromFolder
  * @param $path - the file path on the local drive
  * @return Commander - the class that handles the optimization commands
@@ -213,4 +226,26 @@ function validate() {
     } catch (ClientException $e) {
         return true;
     }
+}
+
+function recurseCopy($source, $dest) {
+    foreach (
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($source, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST) as $item
+    ) {
+        if ($item->isDir()) {
+            mkdir($dest . DIRECTORY_SEPARATOR . $iterator->getSubPathName());
+        } else {
+            copy($item, $dest . DIRECTORY_SEPARATOR . $iterator->getSubPathName());
+        }
+    }
+}
+
+function delTree($dir, $keepBase = true) {
+    $files = array_diff(scandir($dir), array('.','..'));
+    foreach ($files as $file) {
+        (is_dir("$dir/$file")) ? delTree("$dir/$file", false) : unlink("$dir/$file");
+    }
+    return $keepBase ? true : rmdir($dir);
 }

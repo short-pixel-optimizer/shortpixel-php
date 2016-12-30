@@ -65,6 +65,10 @@ class ExifPersister implements Persister {
         return false;
     }
 
+    function info($path) {
+        throw new Exception("Not implemented");
+    }
+
     function getTodo($path, $count, $nextFollows = false)
     {
         $results = array();
@@ -105,7 +109,7 @@ class ExifPersister implements Persister {
         // TODO: Implement doneGet() method.
     }
 
-    function setPending($path)
+    function setPending($path, $optData)
     {
         // TODO: Implement setPending() method.
     }

@@ -6,8 +6,10 @@
  */
 namespace ShortPixel\persist;
 
+use ShortPixel\ClientException;
 use \ShortPixel\Persister;
 use \ShortPixel\ShortPixel;
+use \ShortPixel\Client;
 
 /**
  * Class TextPersister - save the optimization information in .shortpixel files in the current folder of the images
@@ -35,7 +37,6 @@ class TextPersister implements Persister {
         if(!$fp) {
             return false;
         }
-        array_push($this->fp, $fp);
 
         while (($line = fgets($fp)) !== FALSE) {
             $data = $this->parse($line);
@@ -44,9 +45,81 @@ class TextPersister implements Persister {
             }
         }
         fclose($fp);
-        array_pop($this->fp);
 
         return false;
+    }
+
+    function info($path) {
+        if(is_dir($path)) {
+            try {
+                $toClose = $this->openMetaFileIfNeeded($path);
+            } catch(ClientException $e) {
+                return (object)array('status' => 'error', 'message' => $e->getMessage(), 'code' => $e->getCode());
+            }
+            $fp = $this->getMetaFile($path);
+
+            $info = (object)array('status' => 'pending', 'total' => 0, 'succeeded' => 0, 'pending' => 0, 'same' => 0, 'failed' => 0);
+            $files = scandir($path);
+            $dataArr = $this->readMetaFile($fp);
+            $ignore = array('.','..');
+            foreach($files as $file) {
+                $filePath = $path . '/' . $file;
+                if (in_array($file, $ignore)
+                    || (!ShortPixel::isProcessable($file) && !is_dir($filePath))
+                    || isset($dataArr[$file]) && $dataArr[$file]->status == 'deleted'
+                ) {
+                    continue;
+                }
+                if (is_dir($filePath)) {
+                    $subInfo = $this->info($filePath);
+                    $info->total += $subInfo->total;
+                    $info->succeeded += $subInfo->succeeded;
+                    $info->pending += $subInfo->pending;
+                    $info->failed += $subInfo->failed;
+                }
+                else {
+                    $info->total++;
+                    if(!isset($dataArr[$file]) || $dataArr[$file]->status == 'pending') {
+                        $info->pending++;
+                    }
+                    elseif(($dataArr[$file]->status == 'success' && filesize($filePath) != $dataArr[$file]->optimizedSize)
+                        || ($dataArr[$file]->status == 'skip' &&  $dataArr[$file]->retries <= ShortPixel::MAX_RETRIES)) {
+                        //file changed since last optimized, mark it as pending
+                        $dataArr[$file]->status = 'pending';
+                        $this->updateMeta($dataArr[$file], $fp);
+                        $info->pending++;
+                    }
+                    elseif($dataArr[$file]->status == 'success' || $dataArr[$file]->status == 'skip') {
+                        $info->succeeded++;
+                    }
+                    elseif($dataArr[$file]->status == 'skip'){
+                        $info->failed++;
+                    }
+                }
+            }
+
+            if($toClose) {
+                $this->closeMetaFile($path);
+            }
+
+            if($info->pending == 0) $info->status = 'success';
+            return (object)$info;
+        }
+        else {
+            $toClose = $this->openMetaFileIfNeeded(dirname($path));
+
+            $meta = $this->findMeta($path);
+            if(!$meta) {
+                $info = array('status' => 'pending');
+            } else {
+                $info = array('status' => $meta->getStatus());
+            }
+
+            if($toClose) {
+                $this->closeLastOpenMetaFile();
+            }
+        }
+        return (object)$info;
     }
 
     function getTodo($path, $count, $nextFollows = false)
@@ -54,15 +127,162 @@ class TextPersister implements Persister {
         if(!file_exists($path) || !is_dir($path)) {
             return array();
         }
-        $fp = $this->openMetaFile($path);
-        if(!$fp) {
-            return false;
-        }
-
-        array_push($this->fp, $fp);
+        $toClose = $this->openMetaFileIfNeeded($path);
+        $fp = $this->getMetaFile($path);
 
         $files = scandir($path);
+        $dataArr = $this->readMetaFile($fp);
 
+        $results = array();
+        $pendingURLs = array();
+        $ignore = array('.','..');
+        $remain = $count;
+        foreach($files as $file) {
+            $filePath = $path . '/' . $file;
+            if(in_array($file, $ignore)
+               || (!ShortPixel::isProcessable($file) && !is_dir($filePath))
+               || isset($dataArr[$file]) && $dataArr[$file]->status == 'deleted'
+               || isset($dataArr[$file])
+                  && (   $dataArr[$file]->status == 'success' && filesize($filePath) == $dataArr[$file]->optimizedSize
+                      || $dataArr[$file]->status == 'skip') ) {
+                continue;
+            }
+            if(is_dir($filePath)) {
+                if(!isset($dataArr[$file])) {
+                    $this->appendMeta($this->newMeta($file), $fp);
+                }
+                $resultsSubfolder =  $this->getTodo($filePath, $count, $nextFollows);
+                if(count($resultsSubfolder->files)) {
+                    return $resultsSubfolder;
+                } //otherwise ignore the folder;
+            } else {
+                if(isset($dataArr[$file])) {
+                    if(($dataArr[$file]->status == 'success') && (filesize($filePath) !== $dataArr[$file]->optimizedSize)) {
+                        $dataArr[$file]->status = 'pending';
+                        $dataArr[$file]->optimizedSize = 0;
+                        $dataArr[$file]->changeDate = time();
+                        $this->updateMeta($dataArr[$file], $fp);
+                    }
+                    elseif($dataArr[$file]->status == 'error') {
+                        $dataArr[$file]->retries += 1;
+                        if($dataArr[$file]->retries >= ShortPixel::MAX_RETRIES) {
+                            $dataArr[$file]->status = 'skip';
+                        }
+                        $this->updateMeta($dataArr[$file], $fp);
+                        if($dataArr[$file]->retries >= ShortPixel::MAX_RETRIES) {
+                            continue;
+                        }
+                    }
+                    elseif($dataArr[$file]->status == 'pending' && strpos($dataArr[$file]->message, str_replace("https://", "http://",\ShortPixel\Client::API_URL())) === 0) {
+                        //the file is already uploaded and the call should  be made with the existent URL on the optimization server
+                        $apiURL = $dataArr[$file]->message;
+                        $pendingURLs[$apiURL] = $filePath;
+                    }
+                }
+                elseif(!isset($dataArr[$file])) {
+                    $this->appendMeta($this->newMeta($file), $fp);
+                }
+
+                $results[] = $filePath;
+                $remain--;
+
+                if($remain <= 0) {
+                    if($toClose) {
+                        $this->closeMetaFile($path);
+                    }
+                    return (object)array('files' => $results, 'filesPending' => $pendingURLs);
+                }
+            }
+        }
+
+        if($toClose) {
+            $this->closeMetaFile($path);
+        }
+
+        if(count($results) == 0) {//folder is empty or completely optimized, if it's a subfolder of another optimized folder, mark it as such in the parent .shortpixel file
+            if(file_exists(dirname($path) . '/' . ShortPixel::opt("persist_name"))) {
+                $this->setOptimized($path);
+            }
+        }
+        return (object)array('files' => $results, 'filesPending' => $pendingURLs);
+    }
+
+    function getNextTodo($path, $count)
+    {
+        // TODO: Implement getNextTodo() method.
+    }
+
+    function doneGet()
+    {
+        // TODO: Implement doneGet() method.
+    }
+
+    function getOptimizationData($path)
+    {
+        // TODO: Implement getOptimizationData() method.
+    }
+
+    function setPending($path, $optData) {
+        return $this->setStatus($path, $optData, 'pending');
+    }
+
+    function setOptimized($path, $optData = array()) {
+        return $this->setStatus($path, $optData, 'success');
+    }
+
+    function setFailed($path, $optData) {
+        return $this->setStatus($path, $optData, 'error');
+    }
+
+    protected function setStatus($path, $optData, $status) {
+        $toClose = $this->openMetaFileIfNeeded(dirname($path));
+        $fp = $this->getMetaFile(dirname($path));
+
+        $meta = $this->findMeta($path);
+        if($meta) {
+            $meta->retries++;
+        } else {
+            $meta = $this->newMeta(basename($path));
+        }
+        $meta->status = $status == 'error' ? $meta->retries > ShortPixel::MAX_RETRIES ? 'skip' : 'pending' : $status;
+        $metaArr = array_merge((array)$meta, $optData);
+        if(isset($meta->filePos)) {
+            $this->updateMeta((object)$metaArr, $fp, false);
+        } else {
+            $this->appendMeta((object)$metaArr, $fp, false);
+        }
+
+        if($toClose) {
+            $this->closeMetaFile(dirname($path));
+        }
+        return $meta->status;
+    }
+
+    protected function openMetaFileIfNeeded($path) {
+        if(isset($this->fp[$path])) {
+            return false;
+        }
+        $fp = $this->openMetaFile($path);
+        if(!$fp) {
+            throw new \Exception("Could not open meta file in folder " . $path . ". Please check permissions.", -14);
+        }
+        $this->fp[$path] = $fp;
+        return true;
+    }
+
+    protected function getMetaFile($path) {
+        return $this->fp[$path];
+    }
+
+    protected function closeMetaFile($path) {
+        if(isset($this->fp[$path])) {
+            $fp = $this->fp[$path];
+            unset($this->fp[$path]);
+            fclose($fp);
+        }
+    }
+
+    protected function readMetaFile($fp) {
         $dataArr = array(); $err = false;
         for ($i = 0; ($line = fgets($fp)) !== FALSE; $i++) {
             $data = $this->parse($line);
@@ -81,135 +301,20 @@ class TextPersister implements Persister {
                 fwrite($fp, $line . "\r\n");
             }
         }
-
-        $results = array();
-        $ignore = array('.','..');
-        $remain = $count;
-        foreach($files as $file) {
-            $filePath = $path . '/' . $file;
-            if(in_array($file, $ignore)
-               || (!ShortPixel::isProcessable($file) && !is_dir($filePath))
-               || isset($dataArr[$file]) && $dataArr[$file]->status == 'deleted'
-               || isset($dataArr[$file])
-                  && ($dataArr[$file]->status == 'success' || $dataArr[$file]->status == 'skip')
-                  && filesize($filePath) == $dataArr[$file]->optimizedSize) {
-                continue;
-            }
-            if(is_dir($filePath)) {
-                if(!isset($dataArr[$file])) {
-                    $this->appendMeta($this->newMeta($file));
-                }
-                $resultsSubfolder =  $this->getTodo($filePath, $count, $nextFollows);
-                if(count($resultsSubfolder)) {
-                    return $resultsSubfolder;
-                } //otherwise ignore the folder;
-            } else {
-                if(isset($dataArr[$file])) {
-                    if(($dataArr[$file]->status == 'success') && (filesize($filePath) !== $dataArr[$file]->optimizedSize)) {
-                        $dataArr[$file]->status = 'pending';
-                        $dataArr[$file]->optimizedSize = 0;
-                        $dataArr[$file]->changeDate = time();
-                        $this->updateMeta($dataArr[$file]);
-                    }
-                    elseif($dataArr[$file]->status == 'error') {
-                        $dataArr[$file]->retries += 1;
-                        if($dataArr[$file]->retries >= ShortPixel::MAX_RETRIES) {
-                            $dataArr[$file]->status = 'skip';
-                        }
-                        $this->updateMeta($dataArr[$file]);
-                        if($dataArr[$file]->retries >= ShortPixel::MAX_RETRIES) {
-                            continue;
-                        }
-                    }
-                }
-                elseif(!isset($dataArr[$file])) {
-                    $this->appendMeta($this->newMeta($file));
-                }
-
-                $results[] = $filePath;
-                $remain--;
-
-                if($remain <=0) {
-                    return $results;
-                }
-            }
-        }
-
-        fclose($fp);
-        array_pop($this->fp);
-
-        if(count($results) == 0) {//folder is empty or completely optimized, if it's a subfolder of another optimized folder, mark it as such in the parent .shortpixel file
-            if(file_exists(dirname($path) . '/' . ShortPixel::opt("persist_name"))) {
-                $this->setOptimized($path);
-            }
-        }
-        return  $results;
-    }
-
-    function getNextTodo($path, $count)
-    {
-        // TODO: Implement getNextTodo() method.
-    }
-
-    function doneGet()
-    {
-        // TODO: Implement doneGet() method.
-    }
-
-    function getOptimizationData($path)
-    {
-        // TODO: Implement getOptimizationData() method.
-    }
-
-    function setPending($path)
-    {
-        // TODO: Implement setPending() method.
-    }
-
-    function setOptimized($path, $optData = array())
-    {
-        $toClose = false;
-        $fp = end($this->fp);
-        if(!$fp) {
-            $fp = $this->openMetaFile(dirname($path));
-            array_push($this->fp, $fp);
-            if(!$fp) {
-                return false;
-            }
-            $toClose = true;
-        }
-        $meta = $this->findMeta($path);
-        if($meta) {
-            $meta->status = 'success';
-            $meta->retries++;
-            $metaArr = array_merge((array)$meta, $optData);
-            $this->updateMeta((object)$metaArr, false);
-        } else {
-            $meta = $this->newMeta($path);
-            $meta->status = 'success';
-            $metaArr = array_merge((array)$meta, $optData);
-            $this->appendMeta((object)$metaArr, false);
-        }
-        if($toClose) {
-            fclose($fp);
-            array_pop($this->fp);
-        }
-        return true;
-    }
-
-    function setFailed($path, $optData)
-    {
-        // TODO: Implement setFailed() method.
+        return $dataArr;
     }
 
     protected function openMetaFile($path, $type = 'update') {
         $metaFile = $path . '/' . ShortPixel::opt("persist_name");
-        $fp = fopen($metaFile, $type == 'update' ? 'c+' : 'r');
+        $fp = @fopen($metaFile, $type == 'update' ? 'c+' : 'r');
+        if(!$fp) {
+            throw new ClientException("Could not open persistence file $metaFile. Please check rights.", -16);
+        }
         return $fp;
     }
 
     protected function findMeta($path) {
-        $fp = end($this->fp);
+        $fp = $this->openMetaFile(dirname($path));
         fseek($fp, 0);
         for ($i = 0; ($line = fgets($fp)) !== FALSE; $i++) {
             $data = $this->parse($line);
@@ -225,8 +330,7 @@ class TextPersister implements Persister {
      * @param $meta
      * @param bool|false $returnPointer - set this to true if need to have the file pointer back afterwards, such as when updating while reading the file line by line
      */
-    protected function updateMeta($meta, $returnPointer = false) {
-        $fp = end($this->fp);
+    protected function updateMeta($meta, $fp, $returnPointer = false) {
         if($returnPointer) {
             $crt = ftell($fp);
         }
@@ -242,8 +346,7 @@ class TextPersister implements Persister {
      * @param $meta
      * @param bool|false $returnPointer - set this to true if need to have the file pointer back afterwards, such as when updating while reading the file line by line
      */
-    protected function appendMeta($meta, $returnPointer = false) {
-        $fp = end($this->fp);
+    protected function appendMeta($meta, $fp, $returnPointer = false) {
         if($returnPointer) {
             $crt = ftell($fp);
         }
@@ -276,7 +379,7 @@ class TextPersister implements Persister {
             "message" => '');
     }
 
-    const LINE_LENGTH = 445; //including the \r\n at the end
+    const LINE_LENGTH = 465; //including the \r\n at the end
 
     protected function parse($line) {
         if(strlen(rtrim($line, "\r\n")) != (self::LINE_LENGTH - 2)) return false;
@@ -295,7 +398,7 @@ class TextPersister implements Persister {
             "optimizedSize" => 0 + trim(substr($line, 58, 9)),
             "changeDate" => strtotime(trim(substr($line, 67, 20))),
             "file" => trim(substr($line, 87, 256)),
-            "message" => trim(substr($line, 343, 100)),
+            "message" => trim(substr($line, 343, 120)),
         );
         if(!in_array($ret->status, self::$ALLOWED_STATUSES) || !$ret->changeDate) {
             return false;
@@ -319,7 +422,7 @@ class TextPersister implements Persister {
             str_pad(substr(number_format($data->optimizedSize, 0, ".", ""),0 , 8), 9),
             str_pad(date("Y-m-d H:i:s", $data->changeDate), 20),
             str_pad(substr($data->file, 0, 255), 256),
-            str_pad(substr($data->message, 0, 99), 100)
+            str_pad(substr($data->message, 0, 119), 120)
         );
     }
 }
