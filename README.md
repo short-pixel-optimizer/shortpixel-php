@@ -15,7 +15,7 @@ Install the API client with Composer. Add this to your `composer.json`:
 ```json
 {
   "require": {
-    "shortpixel/shortpixel-sdk": "*"
+    "shortpixel/shortpixel-php": "*"
   }
 }
 ```
