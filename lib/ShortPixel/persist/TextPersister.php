@@ -149,7 +149,7 @@ class TextPersister implements Persister {
             }
             if(is_dir($filePath)) {
                 if(!isset($dataArr[$file])) {
-                    $this->appendMeta($this->newMeta($file), $fp);
+                    $this->appendMeta($this->newMeta($filePath), $fp);
                 }
                 $resultsSubfolder =  $this->getTodo($filePath, $count, $nextFollows);
                 if(count($resultsSubfolder->files)) {
@@ -180,7 +180,7 @@ class TextPersister implements Persister {
                     }
                 }
                 elseif(!isset($dataArr[$file])) {
-                    $this->appendMeta($this->newMeta($file), $fp);
+                    $this->appendMeta($this->newMeta($filePath), $fp);
                 }
 
                 $results[] = $filePath;
@@ -242,7 +242,7 @@ class TextPersister implements Persister {
         if($meta) {
             $meta->retries++;
         } else {
-            $meta = $this->newMeta(basename($path));
+            $meta = $this->newMeta($path);
         }
         $meta->status = $status == 'error' ? $meta->retries > ShortPixel::MAX_RETRIES ? 'skip' : 'pending' : $status;
         $metaArr = array_merge((array)$meta, $optData);
@@ -260,6 +260,7 @@ class TextPersister implements Persister {
 
     protected function openMetaFileIfNeeded($path) {
         if(isset($this->fp[$path])) {
+            fseek($this->fp[$path], 0);
             return false;
         }
         $fp = $this->openMetaFile($path);
@@ -375,7 +376,7 @@ class TextPersister implements Persister {
             "percent" => null,
             "optimizedSize" => null,
             "changeDate" => time(),
-            "file" => $file,
+            "file" => basename($file),
             "message" => '');
     }
 

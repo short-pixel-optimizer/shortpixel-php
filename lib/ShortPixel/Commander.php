@@ -17,7 +17,8 @@ class Commander {
     public function __construct($data, Source $source) {
         $this->source = $source;
         $this->data = $data;
-        $this->commands = array('lossy' => 1);
+        //$options = ShortPixel::options();
+        $this->commands = array();//('lossy' => 0 + $options["lossy"]);
     }
 
     /**

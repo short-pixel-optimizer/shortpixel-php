@@ -43,7 +43,7 @@ class Result {
         $i = 0;
         $succeeded = $pending = $failed = $same = array();
 
-        $cmds = $this->commander->getCommands();
+        $cmds = array_merge(ShortPixel::options(), $this->commander->getCommands());
 
         while(true) {
             $items = $this->ctx->body;
@@ -139,6 +139,7 @@ class Result {
                     $same[] = $item;
                     $this->removeItem($item, $pending, "OriginalURL");
                     $this->persist($item, $cmds);
+                    $this->commander->isDone($item);
                     continue;
                 }
 
@@ -179,6 +180,7 @@ class Result {
 
             //For the pending items relaunch, or if any item that needs to be retried from file (-102 or -106)
             if($retry || count($pending)) {
+
                 $this->ctx = $this->commander->relaunch((object)array("body" => $pending, "headers" => $this->ctx->headers, "fileMappings" => $this->ctx->fileMappings));
             } else {
                 break;
@@ -222,7 +224,7 @@ class Result {
             "resizeWidth" => isset($cmds['resize_width']) ? $cmds['resize_width'] : ShortPixel::opt("resize_width"),
             "resizeHeight" => isset($cmds['resize_height']) ? $cmds['resize_height'] : ShortPixel::opt("resize_height"),
             "percent" => isset($item->PercentImprovement) ? $item->PercentImprovement : 0,
-            "optimizedSize" => $item->Status->Code == 2 ? ($cmds["lossy"] == 1 ? $item->LossySize : $item->LosslessSize) : 0,
+            "optimizedSize" => $item->Status->Code == 2 ? ($cmds["lossy"] == 1 ? $item->LossySize : $item->LoselessSize) : 0,
             "changeDate" => time(),
             "message" => null
         );

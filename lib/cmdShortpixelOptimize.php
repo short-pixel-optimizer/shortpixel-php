@@ -3,25 +3,53 @@
  * Created by: simon
  * Date: 15.11.2016
  * Time: 14:59
- * Usage: cmdShortpixelOptimize.php --apiKey <your-api-key-here> --folder /full/path/to/your/images --backupFolder /full/path/to/your/backup
- *   - currently backup is not implemented
+ * Usage: cmdShortpixelOptimize.php --apiKey=<your-api-key-here> --folder=/full/path/to/your/images --backupBase=/full/path/to/your/backup/basedir
+ *   - add --verbose parameter for more info during optimization
+ *   - add --quiet for no output - TBD
+ *   - the backup path will be used as parent directory to the backup folder (the folder will be fully copied but only if it's not there already)
  */
 
-require_once("../lib/shortpixel-php-req.php");
+require_once("shortpixel-php-req.php");
+define("FOLDER_INI_NAME", '.sp-options');
 
-$options = getopt("", array("apiKey::", "folder::", "backupFolder::", "verbose"));
+$options = getopt("", array("apiKey::", "folder::", "backupBase::", "verbose"));
+
 $apiKey = isset($options["apiKey"]) ? $options["apiKey"] : false;
-$folder = isset($options["folder"]) ? $options["folder"] : false;
-$bkFolder = isset($options["backupFolder"]) ? $options["backupFolder"] : false;
+$folder = isset($options["folder"]) ? realpath($options["folder"]) : false;
+$bkBase = isset($options["backupBase"]) ? realpath($options["backupBase"]) : false;
 $verbose = isset($options["verbose"]);
 
-if($bkFolder) {
-    die("\nBackup is not yet implemented. Please make a copy of the folder before proceeding.\n\n");
+if($bkBase) {
+    if(is_dir($bkBase)) {
+        $bkFolder = $bkBase . '/' . basename($folder);
+        if(is_dir($bkFolder)) {
+            echo("\nThe backup is already present, skipping backup.\n");
+        } else {
+            echo("\nBacking-up the folder...\n");
+            @mkdir($bkFolder);
+            if(!is_dir($bkFolder)) {
+                die("\nBackup folder could not be created.\n\n");
+            }
+            try {
+                \ShortPixel\recurseCopy($folder, $bkFolder);
+            } catch (\ShortPixel\Exception $e) {
+                die("\n" . $e->getMessage() . "\n\n");
+            }
+
+        }
+
+    } else {
+        die("\nBackup path does not exist ($bkFolder)\n\n");
+    }
 }
 
 //sanity checks
 if(!$apiKey || strlen($apiKey) != 20 || !ctype_alnum($apiKey)) {
     die("\nPlease provide a valid API Key\n\n");
+}
+
+if(!is_dir($folder)) {
+    die("\nThe folder does not exist.\n\n");
 }
 
 if(substr($folder, 0, 2) == "./") {
@@ -35,11 +63,16 @@ if(!is_dir($folder)) {
     die("\nThe folder $folder does not exist\n\n");
 }
 
-echo("\nStarting to optimize folder $folder using API Key $apiKey ...\n\n");
+echo("\nStarting to optimize folder $folder using API Key $apiKey ...\n");
 
 ShortPixel\setKey($apiKey);
 
 \ShortPixel\ShortPixel::setOptions(array("persist_type" => "text"));
+
+if(file_exists($folder . '/' . FOLDER_INI_NAME)) {
+    $folderOptions = parse_ini_file($folder . '/' . FOLDER_INI_NAME);
+    \ShortPixel\ShortPixel::setOptions($folderOptions);
+}
 
 try {
     $imageCount = $failedImageCount = $sameImageCount = 0;
@@ -80,10 +113,10 @@ try {
         }
         if($crtImageCount == 0) break;
     }
-    echo("\n\n $imageCount images optimized, $sameImageCount checked and were already optimized, $failedImageCount failed to optimize.");
+    echo("\nThis pass: $imageCount images optimized, $sameImageCount don't need optimization, $failedImageCount failed to optimize.");
     if($crtImageCount > 0) echo("\nImages still pending, please relaunch the script to continue.");
     echo("\n\n");
 } catch(Exception $e) {
-    echo("\n\n" . $e->getMessage() . "( code: " . $e->getCode() . " type: " . get_class($e) . ")");
+    echo("\n\n" . $e->getMessage() . "( code: " . $e->getCode() . " type: " . get_class($e) . ")\n\n");
 }
 

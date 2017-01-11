@@ -164,6 +164,18 @@ class Client {
         $body = substr($response, $headerSize);
 
         $details = json_decode($body);
+
+        if(getenv("SHORTPIXEL_DEBUG")) {
+            $info = '';
+            if(is_array($details)) {
+                foreach($details as $det) {
+                    $info .= $det->Status->Code . " " . $det->OriginalURL . (isset($det->localPath) ? "({$det->localPath})" : "" ) . "\n";
+                }
+            } else {
+                $info = $response;
+            }
+            @file_put_contents(dirname(__DIR__) . '/splog.txt', "\nURL Statuses: \n" . $info . "\n", FILE_APPEND);
+        }
         if (!$details) {
             $message = sprintf("Error while parsing response: %s (#%d)",
                 PHP_VERSION_ID >= 50500 ? json_last_error_msg() : "Error",
@@ -185,6 +197,15 @@ class Client {
         } elseif($urls) {
             $fileMappings = $pendingURLs;
         }
+
+        if(getenv("SHORTPIXEL_DEBUG")) {
+            $info = '';
+            foreach($fileMappings as $key => $val) {
+                $info .= "$key -> $val\n";
+            }
+            @file_put_contents(dirname(__DIR__) . '/splog.txt', "\nFile mappings: \n" . $info . "\n", FILE_APPEND);
+        }
+
         if ($status >= 200 && $status <= 299) {
             return array("body" => $details, "headers" => $headers, "fileMappings" => $fileMappings);
         }

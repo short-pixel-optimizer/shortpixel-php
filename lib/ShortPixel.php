@@ -234,10 +234,15 @@ function recurseCopy($source, $dest) {
             new \RecursiveDirectoryIterator($source, \RecursiveDirectoryIterator::SKIP_DOTS),
             \RecursiveIteratorIterator::SELF_FIRST) as $item
     ) {
+        $target = $dest . DIRECTORY_SEPARATOR . $iterator->getSubPathName();
         if ($item->isDir()) {
-            mkdir($dest . DIRECTORY_SEPARATOR . $iterator->getSubPathName());
+            if(!@mkdir($target)) {
+                throw new PersistException("Could not create directory $target. Please check rights.");
+            }
         } else {
-            copy($item, $dest . DIRECTORY_SEPARATOR . $iterator->getSubPathName());
+            if(!@copy($item, $target)) {
+                throw new PersistException("Could not copy file $item to $target. Please check rights.");
+            }
         }
     }
 }
