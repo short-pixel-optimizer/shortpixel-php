@@ -262,7 +262,7 @@ class Client {
                     continue; // or return false, throw new InvalidArgumentException
             }
             $data = file_get_contents($v);
-            $v = call_user_func("end", explode(DIRECTORY_SEPARATOR, $v));
+            $v = end(explode(DIRECTORY_SEPARATOR, $v));
             $k = str_replace($disallow, "_", $k);
             $v = str_replace($disallow, "_", $v);
             $body[] = implode("\r\n", array(

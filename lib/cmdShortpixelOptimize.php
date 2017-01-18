@@ -5,51 +5,56 @@
  * Time: 14:59
  * Usage: cmdShortpixelOptimize.php --apiKey=<your-api-key-here> --folder=/full/path/to/your/images --backupBase=/full/path/to/your/backup/basedir
  *   - add --verbose parameter for more info during optimization
+ *   - add --clearLock to clear a lock that's already placed on the folder. BE SURE you know what you're doing, files might get corrupted if the previous script is still running. The locks expire in 6 min. anyway.
  *   - add --quiet for no output - TBD
  *   - the backup path will be used as parent directory to the backup folder (the folder will be fully copied but only if it's not there already)
  */
 
 require_once("shortpixel-php-req.php");
 define("FOLDER_INI_NAME", '.sp-options');
+define("FOLDER_LOCK_FILE", '.sp-lock');
 
-$options = getopt("", array("apiKey::", "folder::", "backupBase::", "verbose"));
+$processId = uniqid();
+
+$options = getopt("", array("apiKey::", "folder::", "backupBase::", "verbose", "clearLock"));
 
 $apiKey = isset($options["apiKey"]) ? $options["apiKey"] : false;
 $folder = isset($options["folder"]) ? realpath($options["folder"]) : false;
 $bkBase = isset($options["backupBase"]) ? realpath($options["backupBase"]) : false;
 $verbose = isset($options["verbose"]);
+$clearLock = isset($options["clearLock"]);
 
 if($bkBase) {
     if(is_dir($bkBase)) {
         $bkFolder = $bkBase . '/' . basename($folder);
         if(is_dir($bkFolder)) {
-            echo("\nThe backup is already present, skipping backup.\n");
+            echo(splog("The backup is already present, skipping backup."));
         } else {
-            echo("\nBacking-up the folder...\n");
+            echo(splog("Backing-up the folder..."));
             @mkdir($bkFolder);
             if(!is_dir($bkFolder)) {
-                die("\nBackup folder could not be created.\n\n");
+                die(splog("Backup folder could not be created")."\n");
             }
             try {
                 \ShortPixel\recurseCopy($folder, $bkFolder);
             } catch (\ShortPixel\Exception $e) {
-                die("\n" . $e->getMessage() . "\n\n");
+                die(splog($e->getMessage()) . "\n");
             }
 
         }
 
     } else {
-        die("\nBackup path does not exist ($bkFolder)\n\n");
+        die(splog("Backup path does not exist ($bkFolder)")."\n");
     }
 }
 
 //sanity checks
 if(!$apiKey || strlen($apiKey) != 20 || !ctype_alnum($apiKey)) {
-    die("\nPlease provide a valid API Key\n\n");
+    die(splog("Please provide a valid API Key")."\n");
 }
 
 if(!is_dir($folder)) {
-    die("\nThe folder does not exist.\n\n");
+    die(splog("The folder does not exist.")."\n");
 }
 
 if(substr($folder, 0, 2) == "./") {
@@ -60,10 +65,24 @@ if (substr($folder, 0, 1) !== "/") {
 }
 
 if(!is_dir($folder)) {
-    die("\nThe folder $folder does not exist\n\n");
+    die(splog("The folder $folder does not exist.")."\n");
 }
 
-echo("\nStarting to optimize folder $folder using API Key $apiKey ...\n");
+//check if the folder is not locked by another ShortPixel process
+$lockFile = $folder . '/' . FOLDER_LOCK_FILE;
+if(file_exists($lockFile) && !$clearLock) {
+    $lock = file_get_contents($folder . '/' . FOLDER_LOCK_FILE);
+    $lock = explode("=", $lock);
+    if(count($lock) == 2 && $lock[1] > time() - 360) {
+        //a lock was placed on the file less than 6 min. ago
+        die(splog("The $folder folder is locked by another ShortPixel process ({$lock[0]}@" . date("Y-m-d H:i:s", $lock[1]) . ")") . "\n");
+    } else {
+        unlink($lockFile);
+    }
+}
+file_put_contents($lockFile, $processId . "=" . time());
+
+echo(splog("Starting to optimize folder $folder using API Key $apiKey ..."));
 
 ShortPixel\setKey($apiKey);
 
@@ -111,12 +130,29 @@ try {
         } else {
             echo(str_pad("", $crtImageCount, "#"));
         }
+        //if no files were processed in this pass, the folder is done
         if($crtImageCount == 0) break;
+        //check the lock file
+        if(file_exists($lockFile)) {
+            $lock = file_get_contents($folder . '/' . FOLDER_LOCK_FILE);
+            $lock = explode("=", $lock);
+            if($lock[0] != $processId && $lock[1] > time() - 360) {
+                //some other process aquired the lock, alert and exit.
+                die(splog("A different ShortPixel process is optimizing this folder ({$lock[0]}). Exiting."). "\n");
+            } else {
+                file_put_contents($lockFile, $processId . "=" . time());
+            }
+        }
     }
-    echo("\nThis pass: $imageCount images optimized, $sameImageCount don't need optimization, $failedImageCount failed to optimize.");
-    if($crtImageCount > 0) echo("\nImages still pending, please relaunch the script to continue.");
-    echo("\n\n");
+
+    echo(splog("This pass: $imageCount images optimized, $sameImageCount don't need optimization, $failedImageCount failed to optimize."));
+    if($crtImageCount > 0) echo(splog("Images still pending, please relaunch the script to continue."));
+    echo("\n");
 } catch(Exception $e) {
-    echo("\n\n" . $e->getMessage() . "( code: " . $e->getCode() . " type: " . get_class($e) . ")\n\n");
+    echo("\n" . splog($e->getMessage() . "( code: " . $e->getCode() . " type: " . get_class($e) . ")") . "\n");
 }
 
+function splog($msg) {
+    global $processId;
+    return "\n$processId@" . date("Y-m-d H:i:s") . "> $msg\n";
+}
