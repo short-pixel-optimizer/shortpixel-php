@@ -68,13 +68,12 @@ class Client {
             foreach($retUrls["body"] as $url) {
                 //first remove it from the files list as the file was uploaded properly
                 if($url->Status->Code != -102 && $url->Status->Code != -106) {
-                    // TODO check - should not enter here anymore
                     $notExpired[] = $url;
                     if(!isset($body["pendingURLs"][$url->OriginalURL])) {
                         $lala = "cucu";
                     } else
                     $unsetPath = $body["pendingURLs"][$url->OriginalURL];
-                    if(($key = array_search($unsetPath, $body["files"])) !== false) {
+                    if(isset($body["files"]) && ($key = array_search($unsetPath, $body["files"])) !== false) {
                         unset($body["files"][$key]);
                     }
                 }

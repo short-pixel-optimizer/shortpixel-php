@@ -55,12 +55,15 @@ class Source {
      * @return Commander - the class that handles the optimization commands
      * @throws ClientException
      */
-    public function fromFolder($path) {
+    public function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL) {
+        //sanitize
+        $maxFiles = min(1, max(ShortPixel::MAX_ALLOWED_FILES_PER_CALL, intval($maxFiles)));
+
         $persister = ShortPixel::getPersister($path);
         if(!$persister) {
             throw new PersistException("Persist is not enabled in options, needed for folder optimization");
         }
-        $paths = $persister->getTodo($path, ShortPixel::MAX_ALLOWED_FILES_PER_CALL);
+        $paths = $persister->getTodo($path, $maxFiles);
         if($paths) {
             ShortPixel::setOptions(array("base_source_path" => $path));
             return $this->fromFiles($paths->files, null, $paths->filesPending);
@@ -78,10 +81,16 @@ class Source {
      */
     public function fromWebFolder($path, $webPath) {
         $paths = ShortPixel::getPersister()->getTodo($path, ShortPixel::MAX_ALLOWED_FILES_PER_CALL);
-        if($paths) {
-            return $this->fromUrls(array_walk($paths,
-                function($item, $paths){return str_replace($paths->path, $paths->web, $item);},
-                (object)array("path" => $path, "web" => $webPath)));
+        if(count($paths->files)) {
+            $repl = (object)array("path" => $path, "web" => $webPath);
+            $items = array_merge($paths->files, array_values($paths->filesPending)); //not impossible to have filesPending - for example optimized partially without webPath then added it
+            array_walk(
+                $items,
+                function(&$item, $key, $repl){
+                    $item = str_replace($repl->path, $repl->web, $item);
+                }, $repl);
+            ShortPixel::setOptions(array("base_url" => $webPath, "base_source_path" => $path));
+            return $this->fromUrls($items);
         }
         throw new ClientException("Couldn't find any processable file at given path.");
     }

@@ -147,6 +147,15 @@ class TextPersister implements Persister {
                       || $dataArr[$file]->status == 'skip') ) {
                 continue;
             }
+            //if retried too many times recently {
+            if(isset($dataArr[$file]) && $dataArr[$file]->status == 'pending') {
+                $retries = $dataArr[$file]->retries;
+                //over 3 retries wait a minute for each, over 5 retries 2 min. for each, over 10 retries 5 min for each, over 10 retries, 10 min. for each.
+                $delta = max(0, $retries - 2) * 60 + max(0, $retries - 5) * 60 + max(0, $retries - 10) * 180 + max(0, $retries - 20) * 450;
+                if($dataArr[$file]->changeDate > time() - $delta) {
+                    continue;
+                }
+            }
             if(is_dir($filePath)) {
                 if(!isset($dataArr[$file])) {
                     $this->appendMeta($this->newMeta($filePath), $fp);
@@ -234,6 +243,10 @@ class TextPersister implements Persister {
         return $this->setStatus($path, $optData, 'error');
     }
 
+    function setSkipped($path, $optData) {
+        return $this->setStatus($path, $optData, 'skip');
+    }
+
     protected function setStatus($path, $optData, $status) {
         $toClose = $this->openMetaFileIfNeeded(dirname($path));
         $fp = $this->getMetaFile(dirname($path));
@@ -241,6 +254,7 @@ class TextPersister implements Persister {
         $meta = $this->findMeta($path);
         if($meta) {
             $meta->retries++;
+            $meta->changeDate = time();
         } else {
             $meta = $this->newMeta($path);
         }
@@ -286,6 +300,9 @@ class TextPersister implements Persister {
     protected function readMetaFile($fp) {
         $dataArr = array(); $err = false;
         for ($i = 0; ($line = fgets($fp)) !== FALSE; $i++) {
+            if($i > 75) {
+                $lala = "lulu";
+            }
             $data = $this->parse($line);
             if($data) {
                 $data->filePos = $i;

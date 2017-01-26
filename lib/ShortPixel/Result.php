@@ -127,7 +127,12 @@ class Result {
                         $item->OriginalURL = false;
                     }
 
-                    $status = $this->persist($item, $cmds, 'error');
+                    if($item->Status->Code == -201 || $item->Status->Code == -202) { //unrecoverable, no need to retry
+                        $st = 'skip';
+                    } else { //will persist as 'pending' if retries < MAX_RETRIES
+                        $st = 'error';
+                    }
+                    $status = $this->persist($item, $cmds, $st);
                     if($status == 'pending') {
                         $retry = true;
                     } else {
@@ -209,6 +214,8 @@ class Result {
             } elseif ($status == 'error') {
                 $optParams['message'] = $item->Status->Message;
                 return $pers->setFailed($item->SavedFile, $optParams);
+            } elseif ($status == 'skip') {
+                return $pers->setSkipped($item->SavedFile, $optParams, 'skip');
             } else {
                 return $pers->setOptimized($item->SavedFile, $optParams);
             }

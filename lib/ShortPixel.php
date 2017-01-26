@@ -188,9 +188,21 @@ function folderInfo($path) {
  * @return Commander - the class that handles the optimization commands
  * @throws ClientException
  */
-function fromFolder($path) {
+function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL) {
     $source = new Source();
-    return $source->fromFolder($path);
+    return $source->fromFolder($path, $maxFiles);
+}
+
+/**
+ * Stub for Source::fromWebFolder
+ * @param $path - the file path on the local drive
+ * @param $webPath - the corresponding web path for the file path
+ * @return Commander - the class that handles the optimization commands
+ * @throws ClientException
+ */
+function fromWebFolder($path, $webPath) {
+    $source = new Source();
+    return $source->fromWebFolder($path, $webPath);
 }
 
 function fromBuffer($string) {

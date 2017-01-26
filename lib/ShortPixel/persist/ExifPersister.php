@@ -123,4 +123,9 @@ class ExifPersister implements Persister {
     {
         // TODO: Implement setFailed() method.
     }
+
+    function setSkipped($path, $optData)
+    {
+        // TODO: Implement setSkipped() method.
+    }
 }

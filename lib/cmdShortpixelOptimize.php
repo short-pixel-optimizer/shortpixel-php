@@ -4,6 +4,8 @@
  * Date: 15.11.2016
  * Time: 14:59
  * Usage: cmdShortpixelOptimize.php --apiKey=<your-api-key-here> --folder=/full/path/to/your/images --backupBase=/full/path/to/your/backup/basedir
+ *   - WORK IN PROGRESS add --webPath=http://yoursites.address/img/folder/ to map the folder to a web URL and have our servers download the images instead of posting them (less heavy on memory for large files)
+ *   - add --speeed=x x between 1 and 10 - default is 10 but if you have large images it will eat up a lot of memory when creating the post messages so sometimes you might need to lower it. Not needed when using the webPath mapping.
  *   - add --verbose parameter for more info during optimization
  *   - add --clearLock to clear a lock that's already placed on the folder. BE SURE you know what you're doing, files might get corrupted if the previous script is still running. The locks expire in 6 min. anyway.
  *   - add --quiet for no output - TBD
@@ -16,13 +18,19 @@ define("FOLDER_LOCK_FILE", '.sp-lock');
 
 $processId = uniqid();
 
-$options = getopt("", array("apiKey::", "folder::", "backupBase::", "verbose", "clearLock"));
+$options = getopt("", array("apiKey::", "folder::", "webPath::", "speed::", "backupBase::", "verbose", "clearLock"));
 
 $apiKey = isset($options["apiKey"]) ? $options["apiKey"] : false;
 $folder = isset($options["folder"]) ? realpath($options["folder"]) : false;
+$webPath = isset($options["webPath"]) ? filter_var($options["webPath"], FILTER_VALIDATE_URL) : false;
+$speed = isset($options["speed"]) ? intval($options["speed"]) : false;
 $bkBase = isset($options["backupBase"]) ? realpath($options["backupBase"]) : false;
 $verbose = isset($options["verbose"]);
 $clearLock = isset($options["clearLock"]);
+
+if($webPath === false && isset($options["webPath"])) {
+    die(splog("The Web Path specified is invalid - " . $options["webPath"])."\n");
+}
 
 if($bkBase) {
     if(is_dir($bkBase)) {
@@ -75,7 +83,7 @@ if(file_exists($lockFile) && !$clearLock) {
     $lock = explode("=", $lock);
     if(count($lock) == 2 && $lock[1] > time() - 360) {
         //a lock was placed on the file less than 6 min. ago
-        die(splog("The $folder folder is locked by another ShortPixel process ({$lock[0]}@" . date("Y-m-d H:i:s", $lock[1]) . ")") . "\n");
+        die(getLockMsg($lock, $folder));
     } else {
         unlink($lockFile);
     }
@@ -96,63 +104,98 @@ if(file_exists($folder . '/' . FOLDER_INI_NAME)) {
 try {
     $imageCount = $failedImageCount = $sameImageCount = 0;
     $tries = 0;
+    $info = \ShortPixel\folderInfo($folder);
 
-    while($tries < 1000) {
-        try {
-            $result = \ShortPixel\fromFolder($folder)->wait(300)->toFiles($folder);
-        } catch(\ShortPixel\ClientException $ex) {
-            if($ex->getCode() == \ShortPixel\ClientException::NO_FILE_FOUND) {
-                break;
-            }
-        }
-        $tries++;
+    echo(splog("Folder has " . $info->total . " files, " . $info->succeeded . " optimized, " . $info->pending . " pending, " . $info->same . " don't need optimization, " . $info->failed . " failed."));
 
-        $crtImageCount = 0;
-        if(count($result->succeeded) > 0) {
-            $crtImageCount += count($result->succeeded);
-            $imageCount += $crtImageCount;
-        } elseif(count($result->failed)) {
-            $crtImageCount += count($result->failed);
-            $failedImageCount += count($result->failed);
-        } elseif(count($result->same)) {
-            $crtImageCount += count($result->same);
-            $sameImageCount += count($result->same);
-        } elseif(count($result->pending)) {
-            $crtImageCount += count($result->pending);
-        }
-        if($verbose) {
-            echo("PASS $tries : " . count($result->succeeded) . " succeeded, " . count($result->pending) . " pending, " . count($result->same) . " same, " . count($result->failed) . " failed\n");
-            foreach($result->succeeded as $item) {echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");}
-            foreach($result->pending as $item) {echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");}
-            foreach($result->same as $item) {echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");}
-            foreach($result->failed as $item) {echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");}
-            echo("\n");
-        } else {
-            echo(str_pad("", $crtImageCount, "#"));
-        }
-        //if no files were processed in this pass, the folder is done
-        if($crtImageCount == 0) break;
-        //check the lock file
-        if(file_exists($lockFile)) {
-            $lock = file_get_contents($folder . '/' . FOLDER_LOCK_FILE);
-            $lock = explode("=", $lock);
-            if($lock[0] != $processId && $lock[1] > time() - 360) {
-                //some other process aquired the lock, alert and exit.
-                die(splog("A different ShortPixel process is optimizing this folder ({$lock[0]}). Exiting."). "\n");
-            } else {
-                file_put_contents($lockFile, $processId . "=" . time());
-            }
-        }
+    if($info->status == "success") {
+        echo(splog("Congratulations, the folder is optimized."));
     }
+    else {
+        while ($tries < 1000) {
+            try {
+                if ($webPath) {
+                    $result = \ShortPixel\fromWebFolder($folder, $webPath)->wait(300)->toFiles($folder);
+                } elseif ($speed) {
+                    $result = \ShortPixel\fromFolder($folder, $speed)->wait(300)->toFiles($folder);
+                } else {
+                    $result = \ShortPixel\fromFolder($folder)->wait(300)->toFiles($folder);
+                }
+            } catch (\ShortPixel\ClientException $ex) {
+                if ($ex->getCode() == \ShortPixel\ClientException::NO_FILE_FOUND) {
+                    break;
+                }
+            }
+            $tries++;
 
-    echo(splog("This pass: $imageCount images optimized, $sameImageCount don't need optimization, $failedImageCount failed to optimize."));
-    if($crtImageCount > 0) echo(splog("Images still pending, please relaunch the script to continue."));
-    echo("\n");
+            $crtImageCount = 0;
+            if (count($result->succeeded) > 0) {
+                $crtImageCount += count($result->succeeded);
+                $imageCount += $crtImageCount;
+            } elseif (count($result->failed)) {
+                $crtImageCount += count($result->failed);
+                $failedImageCount += count($result->failed);
+            } elseif (count($result->same)) {
+                $crtImageCount += count($result->same);
+                $sameImageCount += count($result->same);
+            } elseif (count($result->pending)) {
+                $crtImageCount += count($result->pending);
+            }
+            if ($verbose) {
+                echo("PASS $tries : " . count($result->succeeded) . " succeeded, " . count($result->pending) . " pending, " . count($result->same) . " don't need optimization, " . count($result->failed) . " failed\n");
+                foreach ($result->succeeded as $item) {
+                    echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");
+                }
+                foreach ($result->pending as $item) {
+                    echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");
+                }
+                foreach ($result->same as $item) {
+                    echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");
+                }
+                foreach ($result->failed as $item) {
+                    echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");
+                }
+                echo("\n");
+            } else {
+                echo(str_pad("", $crtImageCount, "#"));
+            }
+            //if no files were processed in this pass, the folder is done
+            if ($crtImageCount == 0) break;
+            //check the lock file
+            if (file_exists($lockFile)) {
+                $lock = file_get_contents($folder . '/' . FOLDER_LOCK_FILE);
+                $lock = explode("=", $lock);
+                if ($lock[0] != $processId && $lock[1] > time() - 360) {
+                    //some other process aquired the lock, alert and exit.
+                    die(getLockMsg($lock, $folder));
+                } else {
+                    file_put_contents($lockFile, $processId . "=" . time());
+                }
+            }
+        }
+
+        echo(splog("This pass: $imageCount images optimized, $sameImageCount don't need optimization, $failedImageCount failed to optimize."));
+        if ($crtImageCount > 0) echo(splog("Images still pending, please relaunch the script to continue."));
+        echo("\n");
+    }
 } catch(Exception $e) {
     echo("\n" . splog($e->getMessage() . "( code: " . $e->getCode() . " type: " . get_class($e) . ")") . "\n");
+}
+
+//cleanup the lock file
+if(file_exists($lockFile)) {
+    $lock = file_get_contents($folder . '/' . FOLDER_LOCK_FILE);
+    $lock = explode("=", $lock);
+    if($lock[0] == $processId) {
+        unlink($lockFile);
+    }
 }
 
 function splog($msg) {
     global $processId;
     return "\n$processId@" . date("Y-m-d H:i:s") . "> $msg\n";
+}
+
+function getLockMsg($lock, $folder) {
+    return splog("The folder is locked by a different ShortPixel process ({$lock[0]}). Exiting. \n\n\033[31mIf you're SURE no other ShortPixel process is running, you can remove the lock with \n\n >\033[34m rm " . $folder . '/' . FOLDER_LOCK_FILE . " \033[0m \n");
 }

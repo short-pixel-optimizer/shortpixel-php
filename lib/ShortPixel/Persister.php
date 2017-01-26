@@ -17,4 +17,5 @@ interface Persister {
     function setPending($path, $optData);
     function setOptimized($path, $optData);
     function setFailed($path, $optData);
+    function setSkipped($path, $optData);
 }

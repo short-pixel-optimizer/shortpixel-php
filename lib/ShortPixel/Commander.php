@@ -128,7 +128,9 @@ class Commander {
      * @throws ClientException
      */
     public function relaunch($ctx) {
-        if(!count($ctx->body) && !count($this->data["files"])) return false; //nothing to do
+        if(!count($ctx->body) &&
+            (isset($this->data["files"]) && !count($this->data["files"]) ||
+             isset($this->data["urllist"]) && !count($this->data["urllist"]))) return false; //nothing to do
 
         //decrease the total wait and exit while if time expired
         $this->commands["total_wait"] = max(0, $this->commands["total_wait"] - min($this->commands["wait"], 30));
