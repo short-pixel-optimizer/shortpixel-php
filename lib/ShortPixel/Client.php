@@ -33,7 +33,7 @@ class Client {
             CURLOPT_BINARYTRANSFER => true,
             CURLOPT_HEADER => true,
             CURLOPT_TIMEOUT => 60,
-            CURLOPT_CAINFO => self::caBundle(),
+            //CURLOPT_CAINFO => self::caBundle(),
             CURLOPT_SSL_VERIFYPEER => false, //TODO true
             CURLOPT_SSL_VERIFYHOST => false, //TODO remove
             CURLOPT_USERAGENT => self::userAgent(),
