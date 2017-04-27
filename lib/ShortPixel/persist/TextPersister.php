@@ -40,7 +40,7 @@ class TextPersister implements Persister {
 
         while (($line = fgets($fp)) !== FALSE) {
             $data = $this->parse($line);
-            if($data->file === basename($path) && $data->status == 'success' ) {
+            if($data->file === \ShortPixel\MB_basename($path) && $data->status == 'success' ) {
                 return true;
             }
         }
@@ -49,7 +49,7 @@ class TextPersister implements Persister {
         return false;
     }
 
-    function info($path) {
+    function info($path, $recurse = true, $fileList = false, $exclude = array()) {
         if(is_dir($path)) {
             try {
                 $toClose = $this->openMetaFileIfNeeded($path);
@@ -61,7 +61,8 @@ class TextPersister implements Persister {
             $info = (object)array('status' => 'pending', 'total' => 0, 'succeeded' => 0, 'pending' => 0, 'same' => 0, 'failed' => 0);
             $files = scandir($path);
             $dataArr = $this->readMetaFile($fp);
-            $ignore = array('.','..');
+            $ignore = array_merge(array('.','..','ShortPixelBackups'), $exclude);
+
             foreach($files as $file) {
                 $filePath = $path . '/' . $file;
                 if (in_array($file, $ignore)
@@ -71,7 +72,11 @@ class TextPersister implements Persister {
                     continue;
                 }
                 if (is_dir($filePath)) {
+                    if(!$recurse) continue;
                     $subInfo = $this->info($filePath);
+                    if($subInfo->status == 'error') {
+                        return $subInfo;
+                    }
                     $info->total += $subInfo->total;
                     $info->succeeded += $subInfo->succeeded;
                     $info->pending += $subInfo->pending;
@@ -96,6 +101,7 @@ class TextPersister implements Persister {
                         $info->failed++;
                     }
                 }
+                if($fileList) $info->fileList = $dataArr;
             }
 
             if($toClose) {
@@ -122,7 +128,7 @@ class TextPersister implements Persister {
         return (object)$info;
     }
 
-    function getTodo($path, $count, $nextFollows = false)
+    function getTodo($path, $count, $exclude = array())
     {
         if(!file_exists($path) || !is_dir($path)) {
             return array();
@@ -135,7 +141,7 @@ class TextPersister implements Persister {
 
         $results = array();
         $pendingURLs = array();
-        $ignore = array('.','..');
+        $ignore = array_values(array_merge($exclude, array('.','..','ShortPixelBackups')));
         $remain = $count;
         foreach($files as $file) {
             $filePath = $path . '/' . $file;
@@ -160,7 +166,7 @@ class TextPersister implements Persister {
                 if(!isset($dataArr[$file])) {
                     $this->appendMeta($this->newMeta($filePath), $fp);
                 }
-                $resultsSubfolder =  $this->getTodo($filePath, $count, $nextFollows);
+                $resultsSubfolder =  $this->getTodo($filePath, $count, $exclude);
                 if(count($resultsSubfolder->files)) {
                     return $resultsSubfolder;
                 } //otherwise ignore the folder;
@@ -336,7 +342,7 @@ class TextPersister implements Persister {
         fseek($fp, 0);
         for ($i = 0; ($line = fgets($fp)) !== FALSE; $i++) {
             $data = $this->parse($line);
-            if($data->file === basename($path)) {
+            if($data->file === \ShortPixel\MB_basename($path)) {
                 $data->filePos = $i;
                 return $data;
             }
@@ -387,13 +393,13 @@ class TextPersister implements Persister {
             "keepExif" => $this->options['keep_exif'],
             "cmyk2rgb" => $this->options['cmyk2rgb'],
             "resize" => $this->options['resize_width'] ? 1 : 0,
-            "resizeWidth" => $this->options['resize_width'],
-            "resizeHeight" => $this->options['resize_height'],
+            "resizeWidth" => 0 + $this->options['resize_width'],
+            "resizeHeight" => 0 + $this->options['resize_height'],
             "convertto" => $this->options['convertto'],
             "percent" => null,
             "optimizedSize" => null,
             "changeDate" => time(),
-            "file" => basename($file),
+            "file" => \ShortPixel\MB_basename($file),
             "message" => '');
     }
 
@@ -409,9 +415,9 @@ class TextPersister implements Persister {
             "keepExif" => trim(substr($line, 24, 2)),
             "cmyk2rgb" => trim(substr($line, 26, 2)),
             "resize" => trim(substr($line, 28, 2)),
-            "resizeWidth" => 0 + trim(substr($line, 30, 6)),
-            "resizeHeight" => 0 + trim(substr($line, 36, 6)),
-            "convertto" => trim(substr($line, 42, 2)),
+            "resizeWidth" => trim(substr($line, 30, 6)),
+            "resizeHeight" => trim(substr($line, 36, 6)),
+            "convertto" => trim(substr($line, 42, 10)),
             "percent" => 0.0 + trim(substr($line, 52, 6)),
             "optimizedSize" => 0 + trim(substr($line, 58, 9)),
             "changeDate" => strtotime(trim(substr($line, 67, 20))),
@@ -433,8 +439,8 @@ class TextPersister implements Persister {
             str_pad($data->keepExif, 2),
             str_pad($data->cmyk2rgb, 2),
             str_pad($data->resize, 2),
-            str_pad(substr(number_format($data->resizeWidth, 0, ".", ""),0 , 5), 6),
-            str_pad(substr(number_format($data->resizeHeight, 0, ".", ""),0 , 5), 6),
+            str_pad(substr($data->resizeWidth, 0 , 5), 6),
+            str_pad(substr($data->resizeHeight, 0 , 5), 6),
             str_pad($data->convertto, 10),
             str_pad(substr(number_format($data->percent, 2, ".",""),0 , 5), 6),
             str_pad(substr(number_format($data->optimizedSize, 0, ".", ""),0 , 8), 9),

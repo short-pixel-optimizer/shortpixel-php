@@ -29,16 +29,26 @@ class Result {
     /**
      * @param null $path - path to save the file to
      * @param null $fileName - filename of the saved file
+     * @param null $bkPath - the path to save a backup of the original file
      * @return object containig lists with succeeded, pending, failed and same items (same means the image did not need optimization)
      * @throws AccountException
      * @throws ClientException
      */
-    public function toFiles($path = null, $fileName = null) {
+    public function toFiles($path = null, $fileName = null, $bkPath = null) {
+
+//        echo(" PATH: $path BkPath: $bkPath");
+//        spdbgd($this->ctx, 'context');
 
         if($path) {
             if(substr($path, 0, 1) !== '/') {
                 $path = (ShortPixel::opt("base_path") ?: __DIR__) . '/' . $path;
             }
+        }
+        if(!$bkPath && ShortPixel::opt("backup_path")) {
+            $bkPath = ShortPixel::opt("backup_path");
+        }
+        if($bkPath && strpos($bkPath,'/') !== 0) { //it's a relative path
+            $bkPath = normalizePath(rtrim($path, '/') . '/' . $bkPath);
         }
         $i = 0;
         $succeeded = $pending = $failed = $same = array();
@@ -80,7 +90,7 @@ class Result {
                     }
                 } elseif(isset($item->OriginalURL)) {  // it was optimized from a URL
                     if(ShortPixel::opt("base_url")) {
-                        $origURLParts = explode('/', str_replace(ShortPixel::opt("base_url"), "", $item->OriginalURL));
+                        $origURLParts = explode('/', trim(rawurldecode(str_replace(ShortPixel::opt("base_url"), "", $item->OriginalURL)), '/'));
                         $origFileName = $origURLParts[count($origURLParts) - 1];
                         unset($origURLParts[count($origURLParts) - 1]);
                         $relativePath = implode('/', $origURLParts);
@@ -89,6 +99,7 @@ class Result {
                         $origFileName = $origURLParts[count($origURLParts) - 1];
                         $relativePath = "";
                     }
+                    $originalPath = ShortPixel::opt("base_source_path") . '/' . (strlen($relativePath) ? $relativePath . '/' : '') . $origFileName;
                 } else { // something is wrong
                     throw(new ClientException("Malformed response. Please contact support."));
                 }
@@ -98,7 +109,8 @@ class Result {
                     $targetPath .= '/' . $relativePath;
                 }
 
-                $target = $targetPath . '/' . ($fileName ? $fileName . ($i > 0 ? "_" . $i : "") : $origFileName);
+                $fn = ($fileName ? $fileName . ($i > 0 ? "_" . $i : "") : $origFileName);
+                $target = $targetPath . '/' . $fn;
 
                 $item->SavedFile = $target;
 
@@ -121,7 +133,7 @@ class Result {
                         // -102 is expired, means we need to resend the image through post
                         // -106 is file was not downloaded due to access restrictions - if these are uploaded files it looks like a bug in the API
                         //      TODO find and fix
-                        if($this->ctx->fileMappings[$item->OriginalURL]) {
+                        if(isset($this->ctx->fileMappings[$item->OriginalURL])) {
                             unset($this->ctx->fileMappings[$item->OriginalURL]);
                         }
                         $item->OriginalURL = false;
@@ -154,22 +166,26 @@ class Result {
 
                 //Now that's an optimized image indeed
                 try {
+                    if($bkPath && $originalPath) {
+                        $bkCrtPath = rtrim($bkPath, '/') . '/' . (strlen($relativePath) ? $relativePath . '/' : '');
+                        if(!is_dir($bkCrtPath) && !@mkdir($bkCrtPath, 0777, true)) {
+                            throw new Exception("Cannot create backup folder " . $bkCrtPath, -1);
+                        }
+                        if(!copy($originalPath, $bkCrtPath . MB_basename($originalPath))) {
+                            throw new Exception("Cannot copy to backup folder " . $bkCrtPath, -1);
+                        }
+                    }
                     ShortPixel::getClient()->download($cmds["lossy"] == 1 ? $item->LossyURL : $item->LosslessURL, $target);
                     $item->SavedFile = $target;
-                } catch(ClientException $e) {
-                    $this->persist($item, $cmds, 'error');
-                    continue;
-                }
-
-                if(isset($item->WebPLossyURL) && $item->WebPLossyURL !== 'NA') { //a WebP image was generated as per the options, download and save it too
-                    $webpTarget = $targetWebPFile = dirname($target) . DIRECTORY_SEPARATOR . basename($target, '.' . pathinfo($target, PATHINFO_EXTENSION)) . ".webp";
-                    try {
+                    if(isset($item->WebPLossyURL) && $item->WebPLossyURL !== 'NA') { //a WebP image was generated as per the options, download and save it too
+                        $webpTarget = $targetWebPFile = dirname($target) . DIRECTORY_SEPARATOR . MB_basename($target, '.' . pathinfo($target, PATHINFO_EXTENSION)) . ".webp";
                         ShortPixel::getClient()->download($cmds["lossy"] == 1 ? $item->WebPLossyURL : $item->WebPLosslessURL, $webpTarget);
                         $item->WebPSavedFile = $webpTarget;
-                    } catch(ClientException $e) {
-                        $this->persist($item, $cmds, 'error');
-                        continue;
                     }
+                } catch(ClientException $e) {
+                    $item->Status->Message = $e->getMessage();
+                    $this->persist($item, $cmds, 'error');
+                    continue;
                 }
 
                 $succeeded[] = $item;

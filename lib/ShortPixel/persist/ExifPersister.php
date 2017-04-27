@@ -65,27 +65,26 @@ class ExifPersister implements Persister {
         return false;
     }
 
-    function info($path) {
+    function info($path, $recurse = true, $fileList = false, $exclude = array()) {
         throw new Exception("Not implemented");
     }
 
-    function getTodo($path, $count, $nextFollows = false)
+    function getTodo($path, $count, $exclude = array())
     {
         $results = array();
-        $this->getTodoRecursive($path, $count, $results);
+        $this->getTodoRecursive($path, $count, array_values(array_merge($exclude, array('.','..'))), $results);
         return  $results;
     }
 
-    private function getTodoRecursive($path, &$count, &$results) {
+    private function getTodoRecursive($path, &$count, $ignore, &$results) {
         if($count <= 0) return;
-        $ignore = array('.','..');
         $files = scandir($path);
         foreach($files as $t) {
             if($count <= 0) return;
             if(in_array($t, $ignore)) continue;
             $tpath = rtrim($path, '/') . '/' . $t;
             if (is_dir($tpath)) {
-                self::getTodoRecursive($tpath, $count, $results);
+                self::getTodoRecursive($tpath, $count, $ignore, $results);
             } elseif( \ShortPixel\ShortPixel::isProcessable($t)
                      && !$this->isOptimized($tpath)) {
                 $results[] = $tpath;

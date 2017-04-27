@@ -3,7 +3,7 @@
 namespace ShortPixel;
 
 const LIBRARY_CODE = "sp-sdk";
-const VERSION = "0.9.3";
+const VERSION = "0.9.5";
 
 class ShortPixel {
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -30,6 +30,7 @@ class ShortPixel {
         "base_url" => null, // base url of the images - used to generate the path for toFile by extracting from original URL and using the remaining path as relative path to base_path
         "base_source_path" => "", // base path of the local files
         "base_path" => "/tmp", // base path to save the files
+        "backup_path" => false, // backup path, relative to the optimization folder (base_source_path)
         // **** persist options ****
         "persist_type" => null, // null - don't persist, otherwise "text" (.shortpixel text file in each folder), "exif" (mark in the EXIF that the image has been optimized) or "mysql" (to be implemented)
         "persist_name" => ".shortpixel",
@@ -157,6 +158,15 @@ function setOptions($options) {
 }
 
 /**
+ * stub for ShortPixel::opt()
+ * @param $name - name of the option
+ * @return the option
+ */
+function opt($name) {
+    return ShortPixel::opt($name);
+}
+
+/**
  * Stub for Source::fromFiles
  * @param $path - the file path on the local drive
  * @return Commander - the class that handles the optimization commands
@@ -174,12 +184,15 @@ function fromFile($path) {
 /**
  * Stub for Source::folderInfo
  * @param $path - the file path on the local drive
+ * @param $recurse - boolean - go into subfolders or not
+ * @param $fileList - return the list of files with optimization status (only current folder, not subfolders)
+ * @param $exclude - array of folder names that you want to exclude from the optimization
 * @return (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
  * @throws ClientException
  */
-function folderInfo($path) {
+function folderInfo($path, $recurse = true, $fileList = false, $exclude = array()) {
     $source = new Source();
-    return $source->folderInfo($path);
+    return $source->folderInfo($path, $recurse, $fileList, $exclude);
 }
 
 /**
@@ -188,9 +201,9 @@ function folderInfo($path) {
  * @return Commander - the class that handles the optimization commands
  * @throws ClientException
  */
-function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL) {
+function fromFolder($path, $maxFiles = self::MAX_ALLOWED_FILES_PER_CALL, $exclude = array()) {
     $source = new Source();
-    return $source->fromFolder($path, $maxFiles);
+    return $source->fromFolder($path, $maxFiles, $exclude);
 }
 
 /**
@@ -200,9 +213,9 @@ function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL) {
  * @return Commander - the class that handles the optimization commands
  * @throws ClientException
  */
-function fromWebFolder($path, $webPath) {
+function fromWebFolder($path, $webPath, $exclude = array()) {
     $source = new Source();
-    return $source->fromWebFolder($path, $webPath);
+    return $source->fromWebFolder($path, $webPath, $exclude);
 }
 
 function fromBuffer($string) {
@@ -266,3 +279,32 @@ function delTree($dir, $keepBase = true) {
     }
     return $keepBase ? true : rmdir($dir);
 }
+
+/**
+ * a basename alternative that deals OK with multibyte charsets (e.g. Arabic)
+ * @param string $Path
+ * @return string
+ */
+function MB_basename($Path, $suffix = false){
+    $Separator = " qq ";
+    $Path = preg_replace("/[^ ]/u", $Separator."\$0".$Separator, $Path);
+    $Base = basename($Path, $suffix);
+    $Base = str_replace($Separator, "", $Base);
+    return $Base;
+}
+
+
+function spdbg($var, $msg) {
+    echo("DEBUG $msg : "); var_dump($var);
+}
+
+function spdbgd($var, $msg) {
+    die(spdbg($var, $msg));
+}
+
+function normalizePath($path) {
+    $patterns = array('~/{2,}~', '~/(\./)+~', '~([^/\.]+/(?R)*\.{2,}/)~', '~\.\./~');
+    $replacements = array('/', '/', '', '');
+    return preg_replace($patterns, $replacements, $path);
+}
+

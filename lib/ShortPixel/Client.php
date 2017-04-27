@@ -105,7 +105,13 @@ class Client {
             $retFiles = $this->requestInternal($method, $body, $header);
         }
 
-        $body = isset($retUrls["body"]->Status) ? $retUrls["body"] : (isset($retPend["body"]->Status) ? $retPend["body"] : (isset($retFiles["body"]->Status) ? $retFiles["body"] : array_merge($retUrls["body"], $retPend["body"], $retFiles["body"])));
+        $body = isset($retUrls["body"]->Status)
+            ? $retUrls["body"]
+            : (isset($retPend["body"]->Status)
+                ? $retPend["body"]
+                : (isset($retFiles["body"]->Status)
+                    ? $retFiles["body"] :
+                    array_merge($retUrls["body"], $retPend["body"], $retFiles["body"])));
         return (object) array("body"    => $body,
                      "headers" => array_unique(array_merge($retUrls["headers"], $retPend["headers"], $retFiles["headers"])),
                      "fileMappings" => array_merge($retUrls["fileMappings"], $retPend["fileMappings"], $retFiles["fileMappings"]));
@@ -140,12 +146,15 @@ class Client {
             return array("body" => array(), "headers" => array(), "fileMappings" => array());
         }
 
+        //spdbgd(rawurldecode($body['urllist'][1]), "body");
+
         for($i = 0; $i < 6; $i++) {
             $response = curl_exec($request);
             if(!curl_errno($request)) {
                 break;
             }
         }
+
         if(curl_errno($request)) {
             throw new ConnectionException("Error while connecting: " . curl_error($request) . "");
         }
@@ -214,6 +223,7 @@ class Client {
 
     protected function prepareJSONRequest($endpoint, $request, $body, $method, $header) {
         $body = json_encode($body);
+
         array_push($header, "Content-Type: application/json");
         curl_setopt($request, CURLOPT_URL, $endpoint);
         curl_setopt($request, CURLOPT_CUSTOMREQUEST, strtoupper($method));
@@ -261,7 +271,8 @@ class Client {
                     continue; // or return false, throw new InvalidArgumentException
             }
             $data = file_get_contents($v);
-            $v = end(explode(DIRECTORY_SEPARATOR, $v));
+            $pp = explode(DIRECTORY_SEPARATOR, $v);
+            $v = end($pp);
             $k = str_replace($disallow, "_", $k);
             $v = str_replace($disallow, "_", $v);
             $body[] = implode("\r\n", array(

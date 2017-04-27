@@ -41,12 +41,12 @@ class Source {
      * @return (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
      * @throws PersistException
      */
-    public function folderInfo($path){
+    public function folderInfo($path, $recurse = true, $fileList = false, $exclude = array()){
         $persister = ShortPixel::getPersister($path);
         if(!$persister) {
             throw new PersistException("Persist is not enabled in options, needed for fetching folder info");
         }
-        return $persister->info($path);
+        return $persister->info($path, $recurse, $fileList, $exclude);
     }
 
     /**
@@ -55,15 +55,15 @@ class Source {
      * @return Commander - the class that handles the optimization commands
      * @throws ClientException
      */
-    public function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL) {
+    public function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $exclude = array()) {
         //sanitize
-        $maxFiles = min(1, max(ShortPixel::MAX_ALLOWED_FILES_PER_CALL, intval($maxFiles)));
+        $maxFiles = max(1, min(ShortPixel::MAX_ALLOWED_FILES_PER_CALL, intval($maxFiles)));
 
         $persister = ShortPixel::getPersister($path);
         if(!$persister) {
             throw new PersistException("Persist is not enabled in options, needed for folder optimization");
         }
-        $paths = $persister->getTodo($path, $maxFiles);
+        $paths = $persister->getTodo($path, $maxFiles, $exclude);
         if($paths) {
             ShortPixel::setOptions(array("base_source_path" => $path));
             return $this->fromFiles($paths->files, null, $paths->filesPending);
@@ -79,20 +79,25 @@ class Source {
      * @return Commander - the class that handles the optimization commands
      * @throws ClientException
      */
-    public function fromWebFolder($path, $webPath) {
-        $paths = ShortPixel::getPersister()->getTodo($path, ShortPixel::MAX_ALLOWED_FILES_PER_CALL);
+    public function fromWebFolder($path, $webPath, $exclude = array()) {
+
+        $path = rtrim($path, '/');
+        $webPath = rtrim($webPath, '/');
+        $paths = ShortPixel::getPersister()->getTodo($path, ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $exclude);
         if(count($paths->files)) {
             $repl = (object)array("path" => $path, "web" => $webPath);
             $items = array_merge($paths->files, array_values($paths->filesPending)); //not impossible to have filesPending - for example optimized partially without webPath then added it
             array_walk(
                 $items,
                 function(&$item, $key, $repl){
-                    $item = str_replace($repl->path, $repl->web, $item);
+                    $item = $repl->web . rawurlencode(str_replace($repl->path, '', $item));
                 }, $repl);
             ShortPixel::setOptions(array("base_url" => $webPath, "base_source_path" => $path));
+
             return $this->fromUrls($items);
         }
-        throw new ClientException("Couldn't find any processable file at given path.");
+        //folder is either empty, either fully optimized, in both cases it's optimized :)
+        throw new ClientException("Couldn't find any processable file at given path.", 2);
     }
 
     public function fromBuffer($string) {
