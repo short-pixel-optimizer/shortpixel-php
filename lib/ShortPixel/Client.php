@@ -222,6 +222,10 @@ class Client {
     }
 
     protected function prepareJSONRequest($endpoint, $request, $body, $method, $header) {
+        //to escape the + from "+webp"
+        if($body["convertto"]) {
+            $body["convertto"] = urlencode($body["convertto"]);
+        }
         $body = json_encode($body);
 
         array_push($header, "Content-Type: application/json");

@@ -288,6 +288,7 @@ function delTree($dir, $keepBase = true) {
 function MB_basename($Path, $suffix = false){
     $Separator = " qq ";
     $Path = preg_replace("/[^ ]/u", $Separator."\$0".$Separator, $Path);
+    $suffix = preg_replace("/[^ ]/u", $Separator."\$0".$Separator, $suffix);
     $Base = basename($Path, $suffix);
     $Base = str_replace($Separator, "", $Base);
     return $Base;
