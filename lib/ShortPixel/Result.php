@@ -112,6 +112,12 @@ class Result {
                 $fn = ($fileName ? $fileName . ($i > 0 ? "_" . $i : "") : $origFileName);
                 $target = $targetPath . '/' . $fn;
 
+                //if($fn == 'SCRUMstudy-SBOK-Guide-2013.pdf') {
+                    //aici vrem un break de fapt
+                    //$fn = 'SCRUMstudy-SBOK-Guide-2013.pdf';
+                    //$target = $targetPath . '/' . $fn;
+                //}
+
                 $item->SavedFile = $target;
 
                 //TODO: that one is a hack until the API waiting bug is fixed. Afterwards, just throw an exception

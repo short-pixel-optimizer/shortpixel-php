@@ -19,6 +19,9 @@ class Commander {
         $this->data = $data;
         //$options = ShortPixel::options();
         $this->commands = array();//('lossy' => 0 + $options["lossy"]);
+        if($data['refresh']) {
+            $this->refresh();
+        }
     }
 
     /**

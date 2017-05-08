@@ -11,7 +11,7 @@ class Source {
      * @return Commander - the class that handles the optimization commands
      * @throws ClientException
      */
-    public function fromFiles($paths, $basePath = null, $pending = null) {
+    public function fromFiles($paths, $basePath = null, $pending = null, $refresh = false) {
         if(!is_array($paths)) {
             $paths = array($paths);
         }
@@ -26,7 +26,8 @@ class Source {
         $data       = array(
             "plugin_version" => LIBRARY_CODE . " " . VERSION,
             "key" =>  ShortPixel::getKey(),
-            "files" => $files
+            "files" => $files,
+            "refresh" => $refresh
         );
         if($pending && count($pending)) {
             $data["pendingURLs"] = $pending;
@@ -121,7 +122,8 @@ class Source {
         $data       = array(
             "plugin_version" => LIBRARY_CODE . " " . VERSION,
             "key" =>  ShortPixel::getKey(),
-            "urllist" => $this->urls
+            "urllist" => $this->urls,
+            "refresh" => false
         );
 
         return new Commander($data, $this);

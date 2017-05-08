@@ -172,11 +172,16 @@ class TextPersister implements Persister {
                 } //otherwise ignore the folder;
             } else {
                 if(isset($dataArr[$file])) {
-                    if(($dataArr[$file]->status == 'success') && (filesize($filePath) !== $dataArr[$file]->optimizedSize)) {
+                    if(    ($dataArr[$file]->status == 'success')
+                        && (filesize($filePath) !== $dataArr[$file]->optimizedSize)) {
+                        // a file with the wrong size
                         $dataArr[$file]->status = 'pending';
                         $dataArr[$file]->optimizedSize = 0;
                         $dataArr[$file]->changeDate = time();
                         $this->updateMeta($dataArr[$file], $fp);
+                        if(time() - strtotime($dataArr[$file]->changeDate) < 1800) { //need to refresh the file processing on the server
+                            return (object)array('files' => array($filePath), 'filesPending' => array(), 'refresh' => true);
+                        }
                     }
                     elseif($dataArr[$file]->status == 'error') {
                         $dataArr[$file]->retries += 1;
@@ -205,7 +210,7 @@ class TextPersister implements Persister {
                     if($toClose) {
                         $this->closeMetaFile($path);
                     }
-                    return (object)array('files' => $results, 'filesPending' => $pendingURLs);
+                    return (object)array('files' => $results, 'filesPending' => $pendingURLs, 'refresh' => false);
                 }
             }
         }
@@ -434,7 +439,7 @@ class TextPersister implements Persister {
         return sprintf("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
             str_pad($data->type, 2),
             str_pad($data->status, 11),
-            str_pad($data->retries, 2),
+            str_pad($data->retries % 100, 2), // for folders, retries can be > 100 so do a sanity check here - we're not actually interested in folder retries
             str_pad($data->compressionType, 9),
             str_pad($data->keepExif, 2),
             str_pad($data->cmyk2rgb, 2),
