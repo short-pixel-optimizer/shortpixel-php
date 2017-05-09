@@ -226,6 +226,9 @@ class Client {
         if($body["convertto"]) {
             $body["convertto"] = urlencode($body["convertto"]);
         }
+        if($body["urllist"]) {
+            $body["urllist"] = array_map('rawurlencode', $body["urllist"]);
+        }
         $body = json_encode($body);
 
         array_push($header, "Content-Type: application/json");

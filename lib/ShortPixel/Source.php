@@ -69,7 +69,7 @@ class Source {
             ShortPixel::setOptions(array("base_source_path" => $path));
             return $this->fromFiles($paths->files, null, $paths->filesPending);
         }
-        throw new ClientException("Couldn't find any processable file at given path.");
+        throw new ClientException("Couldn't find any processable file at given path.", 2);
     }
 
     /**
