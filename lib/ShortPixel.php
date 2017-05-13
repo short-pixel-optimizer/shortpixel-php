@@ -201,7 +201,7 @@ function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(
  * @return Commander - the class that handles the optimization commands
  * @throws ClientException
  */
-function fromFolder($path, $maxFiles = self::MAX_ALLOWED_FILES_PER_CALL, $exclude = array()) {
+function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $exclude = array()) {
     $source = new Source();
     return $source->fromFolder($path, $maxFiles, $exclude);
 }
