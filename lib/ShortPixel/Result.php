@@ -58,6 +58,7 @@ class Result {
         while(true) {
             $items = $this->ctx->body;
             if(!is_array($items) || count($items) == 0) {
+                throw new AccountException("Result received no items to save!", -1);
 //                return (object)array( 'status' => array('code' => 2, 'message' => 'Folder completely optimized'));
             }
             //check API key errors
@@ -159,6 +160,14 @@ class Result {
                     continue;
                 }
                 elseif($item->PercentImprovement == 0) {
+                    //sometimes the percent is 0 and the size is different (by some octets) so put the correct size in place
+                    if(file_exists($originalPath)) {
+                        if($cmds["lossy"] == 1) {
+                            $item->LossySize = filesize($originalPath);
+                        } else {
+                            $item->LoselessSize = filesize($originalPath);
+                        }
+                    }
                     $same[] = $item;
                     $this->removeItem($item, $pending, "OriginalURL");
                     $this->persist($item, $cmds);
