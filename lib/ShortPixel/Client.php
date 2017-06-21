@@ -18,7 +18,6 @@ class Client {
 	}
 
 	public static function API_UPLOAD_ENDPOINT() {
-		//return self::API_URL() . "/v2/post-reducer-dev.php";
 		return "post-reducer.php";
 	}
 
@@ -240,7 +239,7 @@ class Client {
 			'multipart' => []
 		];
 		foreach ( $body as $name => $content ) {
-			$this->options['multipart'] = [
+			$this->options['multipart'][] = [
 				'name'     => $name,
 				'contents' => $content
 			];
@@ -252,13 +251,12 @@ class Client {
 				case ! is_readable( $path ):
 					continue; // or return false, throw new InvalidArgumentException
 			}
-			$this->options['multipart'] = [
+			$this->options['multipart'][] = [
 				'name'     => $name,
 				'contents' => fopen( $path, 'r' ),
 				'filename' => basename( $path )
 			];
 		}
-
 	}
 
 	function download( $sourceURL, $target ) {
