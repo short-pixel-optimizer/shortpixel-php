@@ -113,7 +113,7 @@ try {
         echo(splog("Congratulations, the folder is optimized."));
     }
     else {
-        while ($tries < 3) {
+        while ($tries < 1000) {
             try {
                 if ($webPath) {
                     $result = \ShortPixel\fromWebFolder($folder, $webPath)->wait(300)->toFiles($folder);
