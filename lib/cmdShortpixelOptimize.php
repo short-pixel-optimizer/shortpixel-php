@@ -104,6 +104,7 @@ if(file_exists($folder . '/' . FOLDER_INI_NAME)) {
 try {
     $imageCount = $failedImageCount = $sameImageCount = 0;
     $tries = 0;
+    $folderOptimized = false;
     $info = \ShortPixel\folderInfo($folder);
 
     echo(splog("Folder has " . $info->total . " files, " . $info->succeeded . " optimized, " . $info->pending . " pending, " . $info->same . " don't need optimization, " . $info->failed . " failed."));
@@ -112,7 +113,7 @@ try {
         echo(splog("Congratulations, the folder is optimized."));
     }
     else {
-        while ($tries < 1000) {
+        while ($tries < 3) {
             try {
                 if ($webPath) {
                     $result = \ShortPixel\fromWebFolder($folder, $webPath)->wait(300)->toFiles($folder);
@@ -124,6 +125,8 @@ try {
             } catch (\ShortPixel\ClientException $ex) {
                 if ($ex->getCode() == \ShortPixel\ClientException::NO_FILE_FOUND) {
                     break;
+                } else {
+                    echo(splog("ClientException: " . $ex->getMessage() . " (CODE: " . $ex->getCode() . ")"));
                 }
             }
             $tries++;
@@ -160,7 +163,10 @@ try {
                 echo(str_pad("", $crtImageCount, "#"));
             }
             //if no files were processed in this pass, the folder is done
-            if ($crtImageCount == 0) break;
+            if ($crtImageCount == 0) {
+                $folderOptimized = ($item->Status->Code == 2);
+                break;
+            }
             //check the lock file
             if (file_exists($lockFile)) {
                 $lock = file_get_contents($folder . '/' . FOLDER_LOCK_FILE);
@@ -174,7 +180,7 @@ try {
             }
         }
 
-        echo(splog("This pass: $imageCount images optimized, $sameImageCount don't need optimization, $failedImageCount failed to optimize."));
+        echo(splog("This pass: $imageCount images optimized, $sameImageCount don't need optimization, $failedImageCount failed to optimize." . ($folderOptimized ? " Congratulations, the folder is optimized.":"")));
         if ($crtImageCount > 0) echo(splog("Images still pending, please relaunch the script to continue."));
         echo("\n");
     }

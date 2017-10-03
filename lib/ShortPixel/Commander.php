@@ -103,6 +103,16 @@ class Commander {
     public function __call($method, $args) {
         if (method_exists("ShortPixel\Result", $method)) {
             //execute the commands and forward to Result
+            if(isset($this->data["files"]) && !count($this->data["files"]) ||
+               isset($this->data["urllist"]) && !count($this->data["urllist"])) {
+                //empty data - no files, no need to send anything, just return an empty result
+                return (object) array(
+                    'status' => array('code' => 2, 'message' => 'success'),
+                    'succeeded' => array(),
+                    'pending' => array(),
+                    'failed' => array(),
+                    'same' => array());
+            }
             $return = $this->execute(true);
             return call_user_func_array(array(new Result($this, $return), $method), $args);
         }
