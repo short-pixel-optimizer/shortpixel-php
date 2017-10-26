@@ -130,13 +130,15 @@ class TextPersister implements Persister {
         return (object)$info;
     }
 
-    function getTodo($path, $count, $exclude = array())
+    function getTodo($path, $count, $exclude = array(), $persistPath = false)
     {
         if(!file_exists($path) || !is_dir($path)) {
             return array();
         }
-        $toClose = $this->openMetaFileIfNeeded($path);
-        $fp = $this->getMetaFile($path);
+        if(!$persistPath) {$persistPath = $path;}
+
+        $toClose = $this->openMetaFileIfNeeded($persistPath);
+        $fp = $this->getMetaFile($persistPath);
 
         $files = scandir($path);
         $dataArr = $this->readMetaFile($fp);
@@ -147,11 +149,12 @@ class TextPersister implements Persister {
         $remain = $count;
         foreach($files as $file) {
             $filePath = $path . '/' . $file;
+            $targetPath = $persistPath . '/' . $file;
             if(in_array($file, $ignore)
                || (!ShortPixel::isProcessable($file) && !is_dir($filePath))
                || isset($dataArr[$file]) && $dataArr[$file]->status == 'deleted'
                || isset($dataArr[$file])
-                  && (   $dataArr[$file]->status == 'success' && filesize($filePath) == $dataArr[$file]->optimizedSize
+                  && (   $dataArr[$file]->status == 'success' && filesize($targetPath) == $dataArr[$file]->optimizedSize
                       || $dataArr[$file]->status == 'skip') ) {
                 continue;
             }
@@ -166,22 +169,28 @@ class TextPersister implements Persister {
             }
             if(is_dir($filePath)) {
                 if(!isset($dataArr[$file])) {
-                    $this->appendMeta($this->newMeta($filePath), $fp);
+                    $dataArr[$file] = $this->newMeta($targetPath);
+                    $dataArr[$file]->filePos = $this->appendMeta($dataArr[$file], $fp);
                 }
-                $resultsSubfolder =  $this->getTodo($filePath, $count, $exclude);
+                $resultsSubfolder =  $this->getTodo($filePath, $count, $exclude, $targetPath);
                 if(count($resultsSubfolder->files)) {
+                    if($toClose) { $this->closeMetaFile($persistPath); }
                     return $resultsSubfolder;
-                } //otherwise ignore the folder;
+                }  elseif($dataArr[$file]->status != 'success') {//otherwise ignore the folder but mark it as succeeded;
+                    $dataArr[$file]->status = 'success';
+                    $this->updateMeta($dataArr[$file], $fp);
+                }
             } else {
                 if(isset($dataArr[$file])) {
                     if(    ($dataArr[$file]->status == 'success')
-                        && (filesize($filePath) !== $dataArr[$file]->optimizedSize)) {
+                        && (filesize($targetPath) !== $dataArr[$file]->optimizedSize)) {
                         // a file with the wrong size
                         $dataArr[$file]->status = 'pending';
                         $dataArr[$file]->optimizedSize = 0;
                         $dataArr[$file]->changeDate = time();
                         $this->updateMeta($dataArr[$file], $fp);
                         if(time() - strtotime($dataArr[$file]->changeDate) < 1800) { //need to refresh the file processing on the server
+                            if($toClose) { $this->closeMetaFile($persistPath); }
                             return (object)array('files' => array($filePath), 'filesPending' => array(), 'refresh' => true);
                         }
                     }
@@ -202,30 +211,27 @@ class TextPersister implements Persister {
                     }
                 }
                 elseif(!isset($dataArr[$file])) {
-                    $this->appendMeta($this->newMeta($filePath), $fp);
+                    $this->appendMeta($this->newMeta($targetPath), $fp);
                 }
 
                 $results[] = $filePath;
                 $remain--;
 
                 if($remain <= 0) {
-                    if($toClose) {
-                        $this->closeMetaFile($path);
-                    }
+                    if($toClose) { $this->closeMetaFile($persistPath); }
                     return (object)array('files' => $results, 'filesPending' => $pendingURLs, 'refresh' => false);
                 }
             }
         }
 
-        if($toClose) {
-            $this->closeMetaFile($path);
-        }
+        if($toClose) { $this->closeMetaFile($persistPath); }
 
-        if(count($results) == 0) {//folder is empty or completely optimized, if it's a subfolder of another optimized folder, mark it as such in the parent .shortpixel file
-            if(file_exists(dirname($path) . '/' . ShortPixel::opt("persist_name"))) {
-                $this->setOptimized($path);
+/*        if(count($results) == 0) {//folder is empty or completely optimized, if it's a subfolder of another optimized folder, mark it as such in the parent .shortpixel file
+            if(file_exists(dirname($persistPath) . '/' . ShortPixel::opt("persist_name"))) {
+                $this->setOptimized($persistPath);
             }
         }
+*/
         return (object)array('files' => $results, 'filesPending' => $pendingURLs);
     }
 
@@ -313,9 +319,6 @@ class TextPersister implements Persister {
     protected function readMetaFile($fp) {
         $dataArr = array(); $err = false;
         for ($i = 0; ($line = fgets($fp)) !== FALSE; $i++) {
-            if($i > 75) {
-                $lala = "lulu";
-            }
             $data = $this->parse($line);
             if($data) {
                 $data->filePos = $i;
@@ -337,6 +340,9 @@ class TextPersister implements Persister {
 
     protected function openMetaFile($path, $type = 'update') {
         $metaFile = $path . '/' . ShortPixel::opt("persist_name");
+        if(!is_dir($path) && !@mkdir($path, 0777, true)) { //create the folder
+            throw new ClientException("The metadata destination path cannot be found. Please check rights", -17);
+        }
         $fp = @fopen($metaFile, $type == 'update' ? 'c+' : 'r');
         if(!$fp) {
             throw new ClientException("Could not open persistence file $metaFile. Please check rights.", -16);
@@ -381,6 +387,7 @@ class TextPersister implements Persister {
         if($returnPointer) {
             $crt = ftell($fp);
         }
+        $fstat = fstat($fp);
         fseek($fp, 0, SEEK_END);
         $line = $this->assemble($meta);
         //$ob = $this->parse($line);
@@ -389,6 +396,7 @@ class TextPersister implements Persister {
         if($returnPointer) {
             fseek($fp, $crt);
         }
+        return $fstat['size'] / self::LINE_LENGTH;
     }
 
     protected function newMeta($file) {
@@ -396,7 +404,7 @@ class TextPersister implements Persister {
             "type" => is_dir($file) ? 'D' : 'I',
             "status" => 'pending',
             "retries" => 0,
-            "compressionType" => $this->options['lossy'] == 1 ? 'lossy' : 'lossless',
+            "compressionType" => $this->options['lossy'] == 1 ? 'lossy' : ($this->options['lossy'] == 2 ? 'glossy' : 'lossless'),
             "keepExif" => $this->options['keep_exif'],
             "cmyk2rgb" => $this->options['cmyk2rgb'],
             "resize" => $this->options['resize_width'] ? 1 : 0,

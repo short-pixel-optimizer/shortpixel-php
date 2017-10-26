@@ -4,25 +4,29 @@
  * Date: 15.11.2016
  * Time: 14:59
  * Usage: cmdShortpixelOptimize.php --apiKey=<your-api-key-here> --folder=/full/path/to/your/images --backupBase=/full/path/to/your/backup/basedir
- *   - WORK IN PROGRESS add --webPath=http://yoursites.address/img/folder/ to map the folder to a web URL and have our servers download the images instead of posting them (less heavy on memory for large files)
+ *   - add --compression=x : 1 for lossy, 2 for glossy and 0 for lossless
+ *   - add --webPath=http://yoursites.address/img/folder/ to map the folder to a web URL and have our servers download the images instead of posting them (less heavy on memory for large files)
  *   - add --speeed=x x between 1 and 10 - default is 10 but if you have large images it will eat up a lot of memory when creating the post messages so sometimes you might need to lower it. Not needed when using the webPath mapping.
  *   - add --verbose parameter for more info during optimization
  *   - add --clearLock to clear a lock that's already placed on the folder. BE SURE you know what you're doing, files might get corrupted if the previous script is still running. The locks expire in 6 min. anyway.
  *   - add --quiet for no output - TBD
  *   - the backup path will be used as parent directory to the backup folder (the folder will be fully copied but only if it's not there already)
+ * The script will read the .sp-options configuration file and will honour the parameters set there, with the command line parameters having priority
  */
 
 require_once("shortpixel-php-req.php");
+
 define("FOLDER_INI_NAME", '.sp-options');
 define("FOLDER_LOCK_FILE", '.sp-lock');
 
 $processId = uniqid();
 
-$options = getopt("", array("apiKey::", "folder::", "webPath::", "speed::", "backupBase::", "verbose", "clearLock"));
+$options = getopt("", array("apiKey::", "folder::", "webPath::", "compression::", "speed::", "backupBase::", "verbose", "clearLock"));
 
 $apiKey = isset($options["apiKey"]) ? $options["apiKey"] : false;
 $folder = isset($options["folder"]) ? realpath($options["folder"]) : false;
 $webPath = isset($options["webPath"]) ? filter_var($options["webPath"], FILTER_VALIDATE_URL) : false;
+$compression = isset($options["compression"]) ? intval($options["compression"]) : false;
 $speed = isset($options["speed"]) ? intval($options["speed"]) : false;
 $bkBase = isset($options["backupBase"]) ? realpath($options["backupBase"]) : false;
 $verbose = isset($options["verbose"]);
@@ -94,7 +98,18 @@ echo(splog("Starting to optimize folder $folder using API Key $apiKey ..."));
 
 ShortPixel\setKey($apiKey);
 
-\ShortPixel\ShortPixel::setOptions(array("persist_type" => "text"));
+//try to get optimization options from the folder .sp-options
+$optionsHandler = new \ShortPixel\Settings();
+$folderOptions = $optionsHandler->readOptions($folder);
+if(!isset($webPath) && $optionsHandler->get("base_url")) {
+    $webPath = $optionsHandler->get("base_url");
+}
+
+$overrides = array();
+if($compression !== false) {
+    $overrides['lossy'] = $compression;
+}
+\ShortPixel\ShortPixel::setOptions(array_merge($folderOptions, $overrides, array("persist_type" => "text")));
 
 if(file_exists($folder . '/' . FOLDER_INI_NAME)) {
     $folderOptions = parse_ini_file($folder . '/' . FOLDER_INI_NAME);
@@ -106,6 +121,10 @@ try {
     $tries = 0;
     $folderOptimized = false;
     $info = \ShortPixel\folderInfo($folder);
+
+    if($info->status == 'error') {
+        die(splog("Error: " . $info->message . " (Code: " . $info->code . ")"));
+    }
 
     echo(splog("Folder has " . $info->total . " files, " . $info->succeeded . " optimized, " . $info->pending . " pending, " . $info->same . " don't need optimization, " . $info->failed . " failed."));
 

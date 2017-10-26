@@ -2,10 +2,11 @@
 
 namespace ShortPixel;
 
-const LIBRARY_CODE = "sp-sdk";
-const VERSION = "0.9.8";
-
 class ShortPixel {
+    const LIBRARY_CODE = "sp-sdk";
+    const VERSION = "1.0.0";
+    const DEBUG_LOG = true;
+
     const MAX_ALLOWED_FILES_PER_CALL = 10;
     const MAX_RETRIES = 3;
 
@@ -15,7 +16,7 @@ class ShortPixel {
     private static $key = NULL;
     private static $client = NULL;
     private static $options = array(
-        "lossy" => 1, // 1 - lossy, 0 - lossless
+        "lossy" => 1, // 1 - lossy, 2 - glossy, 0 - lossless
         "keep_exif" => 0, // 1 - EXIF is preserved, 0 - EXIF is removed
         "resize" => 0, // 0 - don't resize, 1 - outer resize, 3 - inner resize
         "resize_width" => null, // in pixels. null means no resize
@@ -139,6 +140,11 @@ class ShortPixel {
         return in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), \ShortPixel\ShortPixel::$PROCESSABLE_EXTENSIONS);
     }
 
+    static public function log($msg) {
+        if(ShortPixel::DEBUG_LOG) {
+            @file_put_contents(__DIR__ . '/splog.txt', date("Y-m-d H:i:s") . " - " . $msg . " \n\n", FILE_APPEND);
+        }
+    }
 }
 
 /**
@@ -213,9 +219,9 @@ function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $
  * @return Commander - the class that handles the optimization commands
  * @throws ClientException
  */
-function fromWebFolder($path, $webPath, $exclude = array()) {
+function fromWebFolder($path, $webPath, $exclude = array(), $persistFolder = false) {
     $source = new Source();
-    return $source->fromWebFolder($path, $webPath, $exclude);
+    return $source->fromWebFolder($path, $webPath, $exclude, $persistFolder);
 }
 
 function fromBuffer($string) {

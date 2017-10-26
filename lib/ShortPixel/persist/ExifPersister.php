@@ -69,7 +69,7 @@ class ExifPersister implements Persister {
         throw new Exception("Not implemented");
     }
 
-    function getTodo($path, $count, $exclude = array())
+    function getTodo($path, $count, $exclude = array(), $persistFolder = false)
     {
         $results = array();
         $this->getTodoRecursive($path, $count, array_values(array_merge($exclude, array('.','..'))), $results);

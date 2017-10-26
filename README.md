@@ -68,8 +68,9 @@ ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->keepExif()->toFile
 //Each call will optimize up to 10 images from the specified folder and mark in the .shortpixel file. 
 //It automatically recurses a subfolder when finds it
 //Set wait time to 300 to allow enough time for the images to be processed
-// !!! current limitation: When using the text persist type, even if the parameter folder_to_save_to still needs to be set, it needs to be identical with the source path to folder !!! 
 $ret = ShortPixel\fromFolder("/path/to/your/local/folder")->wait(300)->toFiles("/path/to/save/to");
+// !!! current limitation: When using the text persist type, if you need to save to a different path, you must also set the persist path in fromFolder !!! 
+$ret = ShortPixel\fromFolder("/path/to/your/local/folder", 0, array(), "/path/to/save/to")->wait(300)->toFiles("/path/to/save/to");
 //use a URL to map the folder to a WEB path in order for our servers to download themselves the images instead of receiving them via POST - faster and less exposed to connection timeouts
 $ret = ShortPixel\fromWebFolder("/path/to/your/local/folder", "http://web.path/to/your/local/folder")->wait(300)->toFiles("/path/to/save/to");
 //let ShortPixel back-up all your files, before overwriting them (third parameter of toFiles).

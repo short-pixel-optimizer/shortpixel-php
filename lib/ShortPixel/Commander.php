@@ -19,7 +19,7 @@ class Commander {
         $this->data = $data;
         //$options = ShortPixel::options();
         $this->commands = array();//('lossy' => 0 + $options["lossy"]);
-        if($data['refresh']) {
+        if(isset($data['refresh']) && $data['refresh']) {
             $this->refresh();
         }
     }
@@ -58,7 +58,7 @@ class Commander {
      * @return $this
      */
     public function generateWebP($generate = true) {
-        $this->commands = array_merge($this->commands, array("convertto" => $generate ? urlencode("+webp") : ''));
+        $this->commands = array_merge($this->commands, array("convertto" => $generate ? "+webp" : ''));
         return $this;
     }
 
@@ -114,6 +114,9 @@ class Commander {
                     'same' => array());
             }
             $return = $this->execute(true);
+            if(isset($return->body->Status->Code) && $return->body->Status->Code < 0) {
+                throw new AccountException($return->body->Status->Message . (isset($return->body->raw) ? "(Server sent: " . substr($return->body->raw, 0, 200):"") . "...)", $return->body->Status->Code);
+            }
             return call_user_func_array(array(new Result($this, $return), $method), $args);
         }
         else {
@@ -131,6 +134,7 @@ class Commander {
         if($wait && !isset($this->commands['wait'])) {
             $this->commands = array_merge($this->commands, array("wait" => ShortPixel::opt("wait"), "total_wait" => ShortPixel::opt("total_wait")));
         }
+        ShortPixel::log("EXECUTE OPTIONS: " . json_encode(ShortPixel::options()) . " COMMANDS: " . json_encode($this->commands) . " DATA: " . json_encode($this->data));
         return ShortPixel::getClient()->request("post", array_merge(ShortPixel::options(), $this->commands, $this->data));
     }
 
@@ -141,6 +145,7 @@ class Commander {
      * @throws ClientException
      */
     public function relaunch($ctx) {
+        ShortPixel::log("RELAUNCH CTX: " . json_encode($ctx) . " COMMANDS: " . json_encode($this->commands) . " DATA: " . json_encode($this->data));
         if(!count($ctx->body) &&
             (isset($this->data["files"]) && !count($this->data["files"]) ||
              isset($this->data["urllist"]) && !count($this->data["urllist"]))) return false; //nothing to do
@@ -155,7 +160,7 @@ class Commander {
         foreach($ctx->body as $pend) {
             if($type == 'URL') {
                 if($pend->OriginalURL && !in_array($pend->OriginalURL, $pendingURLs)) {
-                    $pendingURLs[$pend->OriginalURL] = $pend->SavedFile;
+                    $pendingURLs[$pend->OriginalURL] = $pend->OriginalFile;
                 }
             } else {
                 //for now
@@ -195,8 +200,13 @@ class Commander {
             }
         }
         //remove from pending URLs
-        if(isset($item->OriginalURL) && isset($this->data["pendingURLs"][$item->OriginalURL])) {
-            unset($this->data["pendingURLs"][$item->OriginalURL]);
+        if(isset($item->OriginalURL)) {
+            if(isset($this->data["pendingURLs"][$item->OriginalURL])) {
+                unset($this->data["pendingURLs"][$item->OriginalURL]);
+            }
+            elseif(isset($this->data["urllist"]) && in_array($item->OriginalURL, $this->data["urllist"])) {
+                $this->data["urllist"] = array_values(array_diff($this->data["urllist"], array($item->OriginalURL)));
+            }
         }
     }
 }

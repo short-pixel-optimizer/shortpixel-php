@@ -18,7 +18,7 @@ namespace ShortPixel\persist;
          /* based on list at http://owl.phy.queensu.ca/~phil/exiftool/TagNames/PNG.html#TextualData
           * and http://www.w3.org/TR/PNG/#11keywords
           */
-         self::$textChunks = [
+         self::$textChunks = array(
              'xml:com.adobe.xmp' => 'xmp',
              # Artist is unofficial. Author is the recommended
              # keyword in the PNG spec. However some people output
@@ -42,7 +42,7 @@ namespace ShortPixel\persist;
              'creation time' => 'DateTimeDigitized',
              'raw profile type app1' => 'APP1_Profile',
              /* Other potentially useful things - Document */
-         ];
+         );
 
          $frameCount = 0;
          $loopCount = 1;
@@ -143,7 +143,7 @@ namespace ShortPixel\persist;
              } elseif ( $chunk_type == "iTXt" ) {
                  // Extracts iTXt chunks, uncompressing if necessary.
                  $buf = self::read( $fh, $chunk_size );
-                 $items = [];
+                 $items = array();
                  if ( preg_match(
                      '/^([^\x00]{1,79})\x00(\x00|\x01)\x00([^\x00]*)(.)[^\x00]*\x00(.*)$/Ds',
                      $buf, $items )
@@ -367,14 +367,14 @@ namespace ShortPixel\persist;
              }
          }
 
-         return [
+         return array(
              'frameCount' => $frameCount,
              'loopCount' => $loopCount,
              'duration' => $duration,
              'text' => $text,
              'bitDepth' => $bitDepth,
              'colorType' => $colorType,
-         ];
+         );
      }
 
      private static function read( $fh, $size ) {

@@ -8,19 +8,19 @@ class Client {
     private $options;
     public static function API_URL() {
         return "https://api.shortpixel.com";
+        //return "https://devapi.shortpixel.com";
     }
     public static function API_ENDPOINT() {
         return self::API_URL() . "/v2/reducer.php";
     }
 
     public static function API_UPLOAD_ENDPOINT() {
-        //return self::API_URL() . "/v2/post-reducer-dev.php";
         return self::API_URL() . "/v2/post-reducer.php";
     }
 
     public static function userAgent() {
         $curl = curl_version();
-        return "ShortPixel/" . VERSION . " PHP/" . PHP_VERSION . " curl/" . $curl["version"];
+        return "ShortPixel/" . ShortPixel::VERSION . " PHP/" . PHP_VERSION . " curl/" . $curl["version"];
     }
 
     private static function caBundle() {
@@ -54,6 +54,8 @@ class Client {
                 unset($body[$key]);
             }
         }
+
+        ShortPixel::log("REQUEST BODY: " . json_encode($body));
 
         $retUrls = array("body" => array(), "headers" => array(), "fileMappings" => array());
         $retPend = array("body" => array(), "headers" => array(), "fileMappings" => array());
@@ -105,6 +107,11 @@ class Client {
             $retFiles = $this->requestInternal($method, $body, $header);
         }
 
+        if(!isset($retUrls["body"]->Status) && !isset($retPend["body"]->Status) && !isset($retFiles["body"]->Status)
+           && (!is_array($retUrls["body"]) || !is_array($retPend["body"]) || !is_array($retFiles["body"]))) {
+            throw new Exception("Request inconsistent status. Please contact support.");
+        }
+
         $body = isset($retUrls["body"]->Status)
             ? $retUrls["body"]
             : (isset($retPend["body"]->Status)
@@ -112,9 +119,12 @@ class Client {
                 : (isset($retFiles["body"]->Status)
                     ? $retFiles["body"] :
                     array_merge($retUrls["body"], $retPend["body"], $retFiles["body"])));
-        return (object) array("body"    => $body,
+
+        $theReturn =  (object) array("body"    => $body,
                      "headers" => array_unique(array_merge($retUrls["headers"], $retPend["headers"], $retFiles["headers"])),
                      "fileMappings" => array_merge($retUrls["fileMappings"], $retPend["fileMappings"], $retFiles["fileMappings"]));
+        ShortPixel::log("REQUEST RETURNS: " . json_encode($theReturn));
+        return $theReturn;
     }
 
     function requestInternal($method, $body = NULL, $header = array()){
@@ -152,6 +162,8 @@ class Client {
             $response = curl_exec($request);
             if(!curl_errno($request)) {
                 break;
+            } else {
+                ShortPixel::log("CURL ERROR: " . curl_error($request) . " (BODY: $response)");
             }
         }
 
@@ -182,15 +194,15 @@ class Client {
             } else {
                 $info = $response;
             }
-            @file_put_contents(dirname(__DIR__) . '/splog.txt', "\nURL Statuses: \n" . $info . "\n", FILE_APPEND);
         }
         if (!$details) {
             $message = sprintf("Error while parsing response: %s (#%d)",
                 PHP_VERSION_ID >= 50500 ? json_last_error_msg() : "Error",
                 json_last_error());
             $details = (object) array(
-                "message" => $message,
-                "error" => "ParseError"
+                "raw" => $body,
+                "error" => "ParseError",
+                "Status" => (object)array("Code" => -1, "Message" => "ParseError: " . $message)
             );
         }
 
@@ -211,7 +223,6 @@ class Client {
             foreach($fileMappings as $key => $val) {
                 $info .= "$key -> $val\n";
             }
-            @file_put_contents(dirname(__DIR__) . '/splog.txt', "\nFile mappings: \n" . $info . "\n", FILE_APPEND);
         }
 
         if ($status >= 200 && $status <= 299) {
@@ -226,9 +237,10 @@ class Client {
         if($body["convertto"]) {
             $body["convertto"] = urlencode($body["convertto"]);
         }
-        if($body["urllist"]) {
-            $body["urllist"] = array_map('rawurlencode', $body["urllist"]);
-        }
+//        if(isset($body["urllist"])) {
+//            aici folosim ceva de genul: parse_url si apoi pe partea de path: str_replace('%2F', '/', rawurlencode($this->filePath)
+//            $body["urllist"] = array_map('rawurlencode', $body["urllist"]);
+//        }
         $body = json_encode($body);
 
         array_push($header, "Content-Type: application/json");
@@ -240,9 +252,14 @@ class Client {
         }
     }
 
+
     protected function prepareMultiPartRequest($request, $body, $header) {
         $files = array();
         $fileCount = 1;
+        //to escape the + from "+webp"
+        if($body["convertto"]) {
+            $body["convertto"] = urlencode($body["convertto"]);
+        }
         foreach($body["files"] as $filePath) {
             $files["file" . $fileCount] = $filePath;
             $fileCount++;
@@ -333,8 +350,9 @@ class Client {
         return $res;
     }
 
-    function download($sourceURL, $target) {
-        $fp = @fopen ($target, 'w+');              // open file handle
+    function download($sourceURL, $target, $expectedSize = false) {
+        $targetTemp = $target . ".sptemp";
+        $fp = @fopen ($targetTemp, 'w+');              // open file handle
         if(!$fp) {
             //file cannot be opened, probably no rights or path disappeared
             if(!is_dir(dirname($target))) {
@@ -355,6 +373,17 @@ class Client {
 
         curl_close($ch);                              // closing curl handle
         fclose($fp);                                  // closing file handle
+        $actualSize = filesize($targetTemp);
+        if(!$expectedSize || $expectedSize == $actualSize) {
+            if(!@rename($targetTemp, $target)) {
+                @unlink($targetTemp);
+                throw new ClientException("File cannot be updated. Please check rights.", -16);
+            }
+        } else {
+            // ATENTIE!!!!! daca s-a oprit aici e un caz de fisier cu dimensiunea diferita, de verificat
+            @unlink($targetTemp);
+            return false; //will retry
+        }
         return true;
     }
 }

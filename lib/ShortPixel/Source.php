@@ -24,11 +24,13 @@ class Source {
             $files[] = $path;
         }
         $data       = array(
-            "plugin_version" => LIBRARY_CODE . " " . VERSION,
+            "plugin_version" => ShortPixel::LIBRARY_CODE . " " . ShortPixel::VERSION,
             "key" =>  ShortPixel::getKey(),
-            "files" => $files,
-            "refresh" => $refresh
+            "files" => $files
         );
+        if($refresh) { //don't put it in the array above because false will overwrite the commands refresh. If only set when true, will just force a refresh when needed.
+            $data["refresh"] = 1;
+        }
         if($pending && count($pending)) {
             $data["pendingURLs"] = $pending;
         }
@@ -56,7 +58,10 @@ class Source {
      * @return Commander - the class that handles the optimization commands
      * @throws ClientException
      */
-    public function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $exclude = array()) {
+    public function fromFolder($path, $maxFiles = 0, $exclude = array(), $persistFolder = false) {
+        if($maxFiles == 0) {
+            $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL;
+        }
         //sanitize
         $maxFiles = max(1, min(ShortPixel::MAX_ALLOWED_FILES_PER_CALL, intval($maxFiles)));
 
@@ -64,7 +69,7 @@ class Source {
         if(!$persister) {
             throw new PersistException("Persist is not enabled in options, needed for folder optimization");
         }
-        $paths = $persister->getTodo($path, $maxFiles, $exclude);
+        $paths = $persister->getTodo($path, $maxFiles, $exclude, $persistFolder);
         if($paths) {
             ShortPixel::setOptions(array("base_source_path" => $path));
             return $this->fromFiles($paths->files, null, $paths->filesPending);
@@ -80,18 +85,19 @@ class Source {
      * @return Commander - the class that handles the optimization commands
      * @throws ClientException
      */
-    public function fromWebFolder($path, $webPath, $exclude = array()) {
+    public function fromWebFolder($path, $webPath, $exclude = array(), $persistFolder = false) {
 
         $path = rtrim($path, '/');
         $webPath = rtrim($webPath, '/');
-        $paths = ShortPixel::getPersister()->getTodo($path, ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $exclude);
+        $paths = ShortPixel::getPersister()->getTodo($path, ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $exclude, $persistFolder);
+        $repl = (object)array("path" => $path, "web" => $webPath);
         if(count($paths->files)) {
-            $repl = (object)array("path" => $path, "web" => $webPath);
             $items = array_merge($paths->files, array_values($paths->filesPending)); //not impossible to have filesPending - for example optimized partially without webPath then added it
             array_walk(
                 $items,
                 function(&$item, $key, $repl){
-                    $item = $repl->web . rawurlencode(str_replace($repl->path, '', $item));
+                    $item = implode('/', array_map('rawurlencode', explode('/', str_replace($repl->path, '', $item))));
+                    $item = $repl->web . $item;
                 }, $repl);
             ShortPixel::setOptions(array("base_url" => $webPath, "base_source_path" => $path));
 
@@ -120,10 +126,10 @@ class Source {
 
         $this->urls = array_map ('utf8_encode',  $urls);
         $data       = array(
-            "plugin_version" => LIBRARY_CODE . " " . VERSION,
+            "plugin_version" => ShortPixel::LIBRARY_CODE . " " . ShortPixel::VERSION,
             "key" =>  ShortPixel::getKey(),
             "urllist" => $this->urls,
-            "refresh" => false
+            // don't add it if false, otherwise will overwrite the refresh command //"refresh" => false
         );
 
         return new Commander($data, $this);

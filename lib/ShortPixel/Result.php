@@ -69,7 +69,7 @@ class Result {
             $retry = false;
             foreach($items as $item) {
 
-                $targetPath = $path;
+                $targetPath = $path; $originalPath = false;
 
                 if($this->ctx->fileMappings && count($this->ctx->fileMappings)) { // it was optimized from a local file, fileMappings contains the mappings from the local files to the internal ShortPixel URLs
                     $originalPath = isset($this->ctx->fileMappings[$item->OriginalURL]) ? $this->ctx->fileMappings[$item->OriginalURL] : false;
@@ -90,7 +90,8 @@ class Result {
                         throw new ClientException("Cannot determine a filename to save to.");
                     }
                 } elseif(isset($item->OriginalURL)) {  // it was optimized from a URL
-                    if(ShortPixel::opt("base_url")) {
+                    $baseUrl = ShortPixel::opt("base_url");
+                    if($baseUrl && strlen($baseUrl)) {
                         $origURLParts = explode('/', trim(rawurldecode(str_replace(ShortPixel::opt("base_url"), "", $item->OriginalURL)), '/'));
                         $origFileName = $origURLParts[count($origURLParts) - 1];
                         unset($origURLParts[count($origURLParts) - 1]);
@@ -113,25 +114,27 @@ class Result {
                 $fn = ($fileName ? $fileName . ($i > 0 ? "_" . $i : "") : $origFileName);
                 $target = $targetPath . '/' . $fn;
 
-                //if($fn == 'SCRUMstudy-SBOK-Guide-2013.pdf') {
-                    //aici vrem un break de fapt
-                    //$fn = 'SCRUMstudy-SBOK-Guide-2013.pdf';
-                    //$target = $targetPath . '/' . $fn;
-                //}
-
+                if($originalPath) { $item->OriginalFile = $originalPath; }
                 $item->SavedFile = $target;
 
                 //TODO: that one is a hack until the API waiting bug is fixed. Afterwards, just throw an exception
-                if($item->Status->Code == 2 && $item->LossySize == 0  && $item->LoselessSize == 0 ) {
+                if(    $item->Status->Code == 2
+                    && (   $item->LossySize == 0  && $item->LoselessSize == 0
+                        || $item->WebPLossyURL != 'NA' && ($item->WebPLossySize == 'NA' || !$item->WebPLossySize )
+                        || $item->WebPLosslessURL != 'NA' && ($item->WebPLoselessSize == 'NA' || !$item->WebPLoselessSize))) {
                     $item->Status->Code = 1;
                 }
 
                 if($item->Status->Code == 1) {
                     $found = $this->findItem($item, $pending, "OriginalURL");
                     if(!$found) {
+                        $item->Retries = 1;
                         $pending[] = $item;
                         $this->persist($item, $cmds, 'pending');
+                    } else {
+                        $pending[$found]->Retries += 1;
                     }
+
                     continue;
                 }
                 elseif ($item->Status->Code != 2) {
@@ -162,7 +165,7 @@ class Result {
                 elseif($item->PercentImprovement == 0) {
                     //sometimes the percent is 0 and the size is different (by some octets) so put the correct size in place
                     if(file_exists($originalPath)) {
-                        if($cmds["lossy"] == 1) {
+                        if($cmds["lossy"] > 0) {
                             $item->LossySize = filesize($originalPath);
                         } else {
                             $item->LoselessSize = filesize($originalPath);
@@ -175,7 +178,7 @@ class Result {
                     continue;
                 }
 
-                if(!is_dir($targetPath)) {
+                if(!is_dir($targetPath) && !@mkdir($targetPath, 0777, true)) { //create the folder
                     throw new ClientException("The destination path cannot be found.");
                 }
 
@@ -190,11 +193,33 @@ class Result {
                             throw new Exception("Cannot copy to backup folder " . $bkCrtPath, -1);
                         }
                     }
-                    ShortPixel::getClient()->download($cmds["lossy"] == 1 ? $item->LossyURL : $item->LosslessURL, $target);
-                    $item->SavedFile = $target;
+                    $optURL = $cmds["lossy"] > 0 ? $item->LossyURL : $item->LosslessURL; //this works also for glossy (2)
+                    $optSize = $cmds["lossy"] > 0 ? $item->LossySize : $item->LosslessSize;
+
+                    $downloadOK = ShortPixel::getClient()->download($optURL, $target, $optSize);
+                    if(!$downloadOK) { // the size is wrong - probably in metadata, retry the image altogether
+                        $found = $this->findItem($item, $pending, "OriginalURL");
+                        if($found === false) {
+                            $item->Status->Code = 1;
+                            $item->Status->Message = "Pending";
+                            $item->Retries = 1;
+                            $pending[] = $item;
+                            $this->persist($item, $cmds, 'pending');
+                        } elseif($pending[$found]->Retries <= 3) {
+                            $pending[$found]->Retries += 1;
+                        } else {
+                            $item->Status->Code = -1;
+                            $item->Status->Message = "Wrong size";
+                            $failed[] = $item;
+                            $this->commander->isDone($item);
+                            $this->removeItem($item, $pending, "OriginalURL");
+                        }
+                        continue;
+                    }
                     if(isset($item->WebPLossyURL) && $item->WebPLossyURL !== 'NA') { //a WebP image was generated as per the options, download and save it too
                         $webpTarget = $targetWebPFile = dirname($target) . DIRECTORY_SEPARATOR . MB_basename($target, '.' . pathinfo($target, PATHINFO_EXTENSION)) . ".webp";
-                        ShortPixel::getClient()->download($cmds["lossy"] == 1 ? $item->WebPLossyURL : $item->WebPLosslessURL, $webpTarget);
+                        $optWebPURL = $cmds["lossy"] > 0 ? $item->WebPLossyURL : $item->WebPLosslessURL;
+                        ShortPixel::getClient()->download($optWebPURL, $webpTarget);
                         $item->WebPSavedFile = $webpTarget;
                     }
                 } catch(ClientException $e) {
@@ -216,7 +241,11 @@ class Result {
 
             //For the pending items relaunch, or if any item that needs to be retried from file (-102 or -106)
             if($retry || count($pending)) {
-
+                if(!$item->OriginalURL) foreach($pending as $pend) {
+                    if(!isset($this->ctx->fileMappings[$pend->OriginalURL])) {
+                        $pend = false;
+                    }
+                }
                 $this->ctx = $this->commander->relaunch((object)array("body" => $pending, "headers" => $this->ctx->headers, "fileMappings" => $this->ctx->fileMappings));
             } else {
                 break;
@@ -254,15 +283,17 @@ class Result {
     }
 
     private function optimizationParams($item, $cmds) {
+        $optimizedSize = $item->Status->Code == 2 ? ($cmds["lossy"] > 0 ? $item->LossySize : $item->LoselessSize) : 0;
+
         return array(
-            "compressionType" => $cmds["lossy"] == 1 ? 'lossy' : 'lossless',
+            "compressionType" => $cmds["lossy"] == 1 ? 'lossy' : ($cmds["lossy"] == 2 ? 'glossy' : 'lossless'),
             "keepExif" => isset($cmds['keep_exif']) ? $cmds['keep_exif'] : ShortPixel::opt("keep_exif"),
             "cmyk2rgb" => isset($cmds['cmyk2rgb']) ? $cmds['cmyk2rgb'] : ShortPixel::opt("cmyk2rgb"),
             "resize" => isset($cmds['resize_width']) ? $cmds['resize_width'] : ShortPixel::opt("resize_width") ? 1 : 0,
             "resizeWidth" => isset($cmds['resize_width']) ? $cmds['resize_width'] : ShortPixel::opt("resize_width"),
             "resizeHeight" => isset($cmds['resize_height']) ? $cmds['resize_height'] : ShortPixel::opt("resize_height"),
-            "percent" => isset($item->PercentImprovement) ? $item->PercentImprovement : 0,
-            "optimizedSize" => $item->Status->Code == 2 ? ($cmds["lossy"] == 1 ? $item->LossySize : $item->LoselessSize) : 0,
+            "percent" => isset($item->PercentImprovement) ? number_format(100.0 * $optimizedSize / $item->OriginalSize, 2) : 0, //$item->PercentImprovement : 0,
+            "optimizedSize" => $optimizedSize,
             "changeDate" => time(),
             "message" => null
         );
