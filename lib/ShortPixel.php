@@ -4,8 +4,8 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.0.0";
-    const DEBUG_LOG = true;
+    const VERSION = "1.0.1";
+    const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
     const MAX_RETRIES = 3;

@@ -115,7 +115,8 @@ class Commander {
             }
             $return = $this->execute(true);
             if(isset($return->body->Status->Code) && $return->body->Status->Code < 0) {
-                throw new AccountException($return->body->Status->Message . (isset($return->body->raw) ? "(Server sent: " . substr($return->body->raw, 0, 200):"") . "...)", $return->body->Status->Code);
+                ShortPixel::log("ERROR THROWN: " . $return->body->Status->Message . (isset($return->body->raw) ? "(Server sent: " . substr($return->body->raw, 0, 200) . "...)" : "") . " CODE: " . $return->body->Status->Code);
+                throw new AccountException($return->body->Status->Message . (isset($return->body->raw) ? "(Server sent: " . substr($return->body->raw, 0, 200) . "...)" : ""), $return->body->Status->Code);
             }
             return call_user_func_array(array(new Result($this, $return), $method), $args);
         }
