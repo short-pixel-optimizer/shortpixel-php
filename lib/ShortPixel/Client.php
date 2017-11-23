@@ -87,6 +87,10 @@ class Client {
             }
             if(count($body["pendingURLs"])) {
                 $retPend = $this->requestInternal($method, $body, $header);
+                if(isset($retPend['body']->Status->Code) && $retPend['body']->Status->Code < 0) { //something's wrong (API key?)
+                    throw new ClientException($retPend['body']->Status->Message, $retPend['body']->Status->Code);
+
+                }
                 if(isset($body["files"])) {
                     $notExpired = array();
                     foreach($retPend['body'] as $detail) {

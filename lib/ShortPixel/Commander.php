@@ -113,7 +113,15 @@ class Commander {
                     'failed' => array(),
                     'same' => array());
             }
-            $return = $this->execute(true);
+            for($i = 0; $i < 6; $i++) {
+                $return = $this->execute(true);
+                if(!isset($return->body->Status->Code) || $return->body->Status->Code != -404) {
+                    break;
+                }
+                // error -404: The maximum number of URLs in the optimization queue reached, wait a bit and retry.
+                sleep(10 + 3 * $i);
+            }
+
             if(isset($return->body->Status->Code) && $return->body->Status->Code < 0) {
                 ShortPixel::log("ERROR THROWN: " . $return->body->Status->Message . (isset($return->body->raw) ? "(Server sent: " . substr($return->body->raw, 0, 200) . "...)" : "") . " CODE: " . $return->body->Status->Code);
                 throw new AccountException($return->body->Status->Message . (isset($return->body->raw) ? "(Server sent: " . substr($return->body->raw, 0, 200) . "...)" : ""), $return->body->Status->Code);
