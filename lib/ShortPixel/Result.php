@@ -159,6 +159,8 @@ class Result {
                         $retry = true;
                     } else {
                         $failed[] = $item;
+                        $this->commander->isDone($item);
+                        $this->removeItem($item, $pending, "OriginalURL");
                     }
                     continue;
                 }
