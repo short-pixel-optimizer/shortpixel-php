@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.0.3";
+    const VERSION = "1.0.4";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -30,7 +30,7 @@ class ShortPixel {
         "total_wait" => 30, //seconds
         "base_url" => null, // base url of the images - used to generate the path for toFile by extracting from original URL and using the remaining path as relative path to base_path
         "base_source_path" => "", // base path of the local files
-        "base_path" => "/tmp", // base path to save the files
+        "base_path" => false, // base path to save the files
         "backup_path" => false, // backup path, relative to the optimization folder (base_source_path)
         // **** persist options ****
         "persist_type" => null, // null - don't persist, otherwise "text" (.shortpixel text file in each folder), "exif" (mark in the EXIF that the image has been optimized) or "mysql" (to be implemented)
@@ -146,6 +146,9 @@ class ShortPixel {
         }
     }
 }
+
+ShortPixel::setOptions(array('base_path' => sys_get_temp_dir()));
+
 
 /**
  * stub for ShortPixel::setKey()

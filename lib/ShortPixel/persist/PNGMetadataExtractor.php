@@ -46,7 +46,7 @@ namespace ShortPixel\persist;
 
          $frameCount = 0;
          $loopCount = 1;
-         $text = [];
+         $text = array();
          $duration = 0.0;
          $bitDepth = 0;
          $colorType = 'unknown';

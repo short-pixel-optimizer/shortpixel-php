@@ -38,10 +38,12 @@ class Result {
 
 //        echo(" PATH: $path BkPath: $bkPath");
 //        spdbgd($this->ctx, 'context');
+        $thisDir = str_replace(DIRECTORY_SEPARATOR, '/', __DIR__);
 
         if($path) {
-            if(substr($path, 0, 1) !== '/') {
-                $path = (ShortPixel::opt("base_path") ?: __DIR__) . '/' . $path;
+            if(   (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' && preg_match('/^[a-zA-Z]:\//', $path) === 0) //it's Windows and no drive letter X:
+               || (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN' && substr($path, 0, 1) !== '/')) { //it's not Windows and doesn't start with a /
+                $path = (ShortPixel::opt("base_path") ?: $thisDir) . '/' . $path;
             }
         }
         if(!$bkPath && ShortPixel::opt("backup_path")) {
@@ -106,7 +108,7 @@ class Result {
                     throw(new ClientException("Malformed response. Please contact support."));
                 }
                 if(!$targetPath) { //se pare ca trebuie oricum
-                    $targetPath = (ShortPixel::opt("base_path") ?: __DIR__) . '/' . $relativePath;
+                    $targetPath = (ShortPixel::opt("base_path") ?: $thisDir) . '/' . $relativePath;
                 } elseif(ShortPixel::opt("base_source_path") && strlen($relativePath)) {
                     $targetPath .= '/' . $relativePath;
                 }
@@ -294,7 +296,7 @@ class Result {
             "resize" => isset($cmds['resize_width']) ? $cmds['resize_width'] : ShortPixel::opt("resize_width") ? 1 : 0,
             "resizeWidth" => isset($cmds['resize_width']) ? $cmds['resize_width'] : ShortPixel::opt("resize_width"),
             "resizeHeight" => isset($cmds['resize_height']) ? $cmds['resize_height'] : ShortPixel::opt("resize_height"),
-            "percent" => isset($item->PercentImprovement) ? number_format(100.0 * $optimizedSize / $item->OriginalSize, 2) : 0, //$item->PercentImprovement : 0,
+            "percent" => isset($item->PercentImprovement) ? number_format(100.0 - 100.0 * $optimizedSize / $item->OriginalSize, 2) : 0, //$item->PercentImprovement : 0,
             "optimizedSize" => $optimizedSize,
             "changeDate" => time(),
             "message" => null

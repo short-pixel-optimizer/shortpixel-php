@@ -115,11 +115,12 @@ class Commander {
             }
             for($i = 0; $i < 6; $i++) {
                 $return = $this->execute(true);
-                if(!isset($return->body->Status->Code) || $return->body->Status->Code != -404) {
+                if(!isset($return->body->Status->Code) || !in_array($return->body->Status->Code, [-404, -500])) {
                     break;
                 }
                 // error -404: The maximum number of URLs in the optimization queue reached, wait a bit and retry.
-                sleep(10 + 3 * $i);
+                // error -500: maintenance mode
+                sleep((10 + 3 * $i) * ($return->body->Status->Code == -500 ? 6 : 1)); //sleep six times longer if maintenance mode. This gives about 15 minutes in total, then it will throw exception.
             }
 
             if(isset($return->body->Status->Code) && $return->body->Status->Code < 0) {
