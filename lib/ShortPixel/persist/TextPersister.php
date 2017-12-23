@@ -59,8 +59,10 @@ class TextPersister implements Persister {
                 $fp = $this->getMetaFile($persistPath);
                 $dataArr = $this->readMetaFile($fp);
             } catch(ClientException $e) {
-                $dataArr = array(); //for info there's no problem if we don't find the meta file, it means the folder is not optimized.
-                //return (object)array('status' => 'error', 'message' => $e->getMessage(), 'code' => $e->getCode());
+                if(is_dir($persistPath) && file_exists($persistPath . '/' . ShortPixel::opt("persist_name"))) {
+                    return (object)array('status' => 'error', 'message' => $e->getMessage(), 'code' => $e->getCode());
+                }
+                $dataArr = array(); //there's no problem if the metadata file is missing and cannot be created, for the info call
             }
 
             $info = (object)array('status' => 'pending', 'total' => 0, 'succeeded' => 0, 'pending' => 0, 'same' => 0, 'failed' => 0, 'todo' => null);
@@ -124,9 +126,17 @@ class TextPersister implements Persister {
             $info->todo = $this->getTodo($path, 1, $exclude, $persistPath);
         }
         else {
-            $toClose = $this->openMetaFileIfNeeded(dirname($persistPath));
+            $persistFolder = dirname($persistPath);
+            $meta = $toClose = false;
+            try {
+                $toClose = $this->openMetaFileIfNeeded($persistFolder);
+                $meta = $this->findMeta($persistPath);
+            } catch(ClientException $e) {
+                if(is_dir($persistFolder) && file_exists($persistFolder . '/' . ShortPixel::opt("persist_name"))) {
+                    return (object)array('status' => 'error', 'message' => $e->getMessage(), 'code' => $e->getCode());
+                }
+            }
 
-            $meta = $this->findMeta($persistPath);
             if(!$meta) {
                 $info = array('status' => 'pending');
             } else {
