@@ -206,7 +206,7 @@ class Client {
             $details = (object) array(
                 "raw" => $body,
                 "error" => "ParseError",
-                "message" => $message,
+                "message" => $message . "( " . $body . ")",
                 "Status" => (object)array("Code" => -1, "Message" => "ParseError: " . $message)
             );
         }

@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.0.4";
+    const VERSION = "1.1.0";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -199,9 +199,9 @@ function fromFile($path) {
 * @return (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
  * @throws ClientException
  */
-function folderInfo($path, $recurse = true, $fileList = false, $exclude = array()) {
+function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false) {
     $source = new Source();
-    return $source->folderInfo($path, $recurse, $fileList, $exclude);
+    return $source->folderInfo($path, $recurse, $fileList, $exclude, $persistPath);
 }
 
 /**
@@ -210,9 +210,9 @@ function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(
  * @return Commander - the class that handles the optimization commands
  * @throws ClientException
  */
-function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $exclude = array()) {
+function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $exclude = array(), $persistPath = false) {
     $source = new Source();
-    return $source->fromFolder($path, $maxFiles, $exclude);
+    return $source->fromFolder($path, $maxFiles, $exclude, $persistPath);
 }
 
 /**

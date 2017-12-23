@@ -174,7 +174,12 @@ class Result {
                         } else {
                             $item->LoselessSize = filesize($originalPath);
                         }
+                        if(!file_exists($target)) {
+                            //this is a case when the target is different from the original path, so just copy the file over
+                            @copy($originalPath, $target);
+                        }
                     }
+                    $this->checkSaveWebP($item, $target, $cmds);
                     $same[] = $item;
                     $this->removeItem($item, $pending, "OriginalURL");
                     $this->persist($item, $cmds);
@@ -220,20 +225,15 @@ class Result {
                         }
                         continue;
                     }
-                    if(isset($item->WebPLossyURL) && $item->WebPLossyURL !== 'NA') { //a WebP image was generated as per the options, download and save it too
-                        $webpTarget = $targetWebPFile = dirname($target) . DIRECTORY_SEPARATOR . MB_basename($target, '.' . pathinfo($target, PATHINFO_EXTENSION)) . ".webp";
-                        $optWebPURL = $cmds["lossy"] > 0 ? $item->WebPLossyURL : $item->WebPLosslessURL;
-                        ShortPixel::getClient()->download($optWebPURL, $webpTarget);
-                        $item->WebPSavedFile = $webpTarget;
-                    }
-                } catch(ClientException $e) {
+                    $this->checkSaveWebP($item, $target, $cmds);
+                }
+                catch(ClientException $e) {
                     $item->Status->Message = $e->getMessage();
                     $this->persist($item, $cmds, 'error');
                     continue;
                 }
 
                 $succeeded[] = $item;
-
                 $this->persist($item, $cmds);
 
                 //remove from pending
@@ -268,6 +268,16 @@ class Result {
         );
     }
 
+    private function checkSaveWebP($item, $target, $cmds)
+    {
+        if (isset($item->WebPLossyURL) && $item->WebPLossyURL !== 'NA') { //a WebP image was generated as per the options, download and save it too
+            $webpTarget = $targetWebPFile = dirname($target) . DIRECTORY_SEPARATOR . MB_basename($target, '.' . pathinfo($target, PATHINFO_EXTENSION)) . ".webp";
+            $optWebPURL = $cmds["lossy"] > 0 ? $item->WebPLossyURL : $item->WebPLosslessURL;
+            ShortPixel::getClient()->download($optWebPURL, $webpTarget);
+            $item->WebPSavedFile = $webpTarget;
+        }
+    }
+
     private function persist($item, $cmds, $status = 'success') {
         $pers = ShortPixel::getPersister();
         if($pers) {
@@ -279,6 +289,7 @@ class Result {
                 $optParams['message'] = $item->Status->Message;
                 return $pers->setFailed($item->SavedFile, $optParams);
             } elseif ($status == 'skip') {
+                $optParams['message'] = $item->Status->Message;
                 return $pers->setSkipped($item->SavedFile, $optParams, 'skip');
             } else {
                 return $pers->setOptimized($item->SavedFile, $optParams);

@@ -65,7 +65,7 @@ class ExifPersister implements Persister {
         return false;
     }
 
-    function info($path, $recurse = true, $fileList = false, $exclude = array()) {
+    function info($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false) {
         throw new Exception("Not implemented");
     }
 

@@ -10,7 +10,7 @@ interface Persister {
     function __construct($options);
     function isOptimized($path);
     function getOptimizationData($path);
-    function info($path, $recurse = true, $fileList = false, $exclude = array());
+    function info($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false);
     function getTodo($path, $count, $exclude = array(), $persistFolder = false);
     function getNextTodo($path, $count);
     function doneGet();

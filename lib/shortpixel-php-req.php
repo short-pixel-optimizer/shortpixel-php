@@ -18,6 +18,7 @@ use ShortPixel;
 */
 
 require_once("ShortPixel/Settings.php");
+require_once("ShortPixel/Lock.php");
 require_once("ShortPixel/Persister.php");
 require_once("ShortPixel/persist/TextPersister.php");
 require_once("ShortPixel/persist/ExifPersister.php");

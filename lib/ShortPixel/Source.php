@@ -44,12 +44,12 @@ class Source {
      * @return (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
      * @throws PersistException
      */
-    public function folderInfo($path, $recurse = true, $fileList = false, $exclude = array()){
+    public function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false){
         $persister = ShortPixel::getPersister($path);
         if(!$persister) {
             throw new PersistException("Persist is not enabled in options, needed for fetching folder info");
         }
-        return $persister->info($path, $recurse, $fileList, $exclude);
+        return $persister->info($path, $recurse, $fileList, $exclude, $persistPath);
     }
 
     /**

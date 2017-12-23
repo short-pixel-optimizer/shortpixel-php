@@ -65,6 +65,19 @@ class Settings {
         return $data;
     }
 
+    static function pathToRelative($path, $reference) {
+        $pa = explode('/', trim($path, '/'));
+        $ra = explode('/', trim($reference, '/'));
+        $res = array();
+        for($i = 0, $same = true; $i < max(count($pa), count($ra)); $i++) {
+            if($same && isset($pa[$i]) && isset($ra[$i]) && $pa[$i] == $ra[$i]) continue;
+            $same = false;
+            if(isset($ra[$i])) array_unshift($res, '..');
+            if(isset($pa[$i])) $res[] = $pa[$i];
+        }
+        return implode('/', $res);
+    }
+
     function persistFolderSettings($data, $path) {
         $strSettings = "[SHORTPIXEL]\n";
         foreach($this->post2options($data) as $key => $val) {
