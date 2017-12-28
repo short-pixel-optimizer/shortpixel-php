@@ -55,10 +55,15 @@ class Source {
     /**
      * processes a chunk of MAX_ALLOWED files from the folder, based on the persisted information about which images are processed and which not. This information is offered by the Persister object.
      * @param $path - the folder path on the local drive
+     * @param int $maxFiles - maximum number of files to select from the folder
+     * @param array $exclude - exclude files based on regex patterns
+     * @param $persistFolder - the path where to store the metadata, if different from the $path (usually the target path)
+     * @param int $maxTotalFileSize - max summed up file size in MB
      * @return Commander - the class that handles the optimization commands
      * @throws ClientException
+     * @throws PersistException
      */
-    public function fromFolder($path, $maxFiles = 0, $exclude = array(), $persistFolder = false) {
+    public function fromFolder($path, $maxFiles = 0, $exclude = array(), $persistFolder = false, $maxTotalFileSize = ShortPixel::CLIENT_MAX_BODY_SIZE) {
         if($maxFiles == 0) {
             $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL;
         }
@@ -69,7 +74,7 @@ class Source {
         if(!$persister) {
             throw new PersistException("Persist is not enabled in options, needed for folder optimization");
         }
-        $paths = $persister->getTodo($path, $maxFiles, $exclude, $persistFolder);
+        $paths = $persister->getTodo($path, $maxFiles, $exclude, $persistFolder, $maxTotalFileSize);
         if($paths) {
             ShortPixel::setOptions(array("base_source_path" => $path));
             return $this->fromFiles($paths->files, null, $paths->filesPending);
@@ -82,8 +87,11 @@ class Source {
      * based on the persisted information about which images are processed and which not. This information is offered by the Persister object.
      * @param $path - the folder path on the local drive
      * @param $webPath - the web URL of the folder
+     * @param array $exclude - exclude files based on regex patterns
+     * @param $persistFolder - the path where to store the metadata, if different from the $path (usually the target path)
      * @return Commander - the class that handles the optimization commands
      * @throws ClientException
+     * @throws PersistException
      */
     public function fromWebFolder($path, $webPath, $exclude = array(), $persistFolder = false) {
 

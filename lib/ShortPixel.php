@@ -4,11 +4,12 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.1.1";
+    const VERSION = "1.1.2";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
-    const MAX_RETRIES = 3;
+    const CLIENT_MAX_BODY_SIZE = 48; // in MBytes.
+    const MAX_RETRIES = 6;
 
     const LOSSY_EXIF_TAG = "SPXLY";
     const LOSSLESS_EXIF_TAG = "SPXLL";
@@ -196,7 +197,8 @@ function fromFile($path) {
  * @param $recurse - boolean - go into subfolders or not
  * @param $fileList - return the list of files with optimization status (only current folder, not subfolders)
  * @param $exclude - array of folder names that you want to exclude from the optimization
-* @return (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
+ * @param $persistPath - the path where to look for the metadata, if different from the $path
+ * @return (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
  * @throws ClientException
  */
 function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false) {
@@ -207,18 +209,24 @@ function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(
 /**
  * Stub for Source::fromFolder
  * @param $path - the file path on the local drive
+ * @param $maxFiles - maximum number of files to select from the folder
+ * @param $exclude - exclude files based on regex patterns
+ * @param $persistPath - the path where to store the metadata, if different from the $path (usually the target path)
+ * @param $maxTotalFileSize - max summed up file size in MB
  * @return Commander - the class that handles the optimization commands
  * @throws ClientException
  */
-function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $exclude = array(), $persistPath = false) {
+function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $exclude = array(), $persistPath = false, $maxTotalFileSize = ShortPixel::CLIENT_MAX_BODY_SIZE) {
     $source = new Source();
-    return $source->fromFolder($path, $maxFiles, $exclude, $persistPath);
+    return $source->fromFolder($path, $maxFiles, $exclude, $persistPath, $maxTotalFileSize);
 }
 
 /**
  * Stub for Source::fromWebFolder
  * @param $path - the file path on the local drive
  * @param $webPath - the corresponding web path for the file path
+ * @param array $exclude - exclude files based on regex patterns
+ * @param $persistFolder - the path where to store the metadata, if different from the $path (usually the target path)
  * @return Commander - the class that handles the optimization commands
  * @throws ClientException
  */
