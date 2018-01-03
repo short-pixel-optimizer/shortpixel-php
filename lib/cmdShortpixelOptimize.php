@@ -39,7 +39,8 @@ if($webPath === false && isset($options["webPath"])) {
 $bkFolder = $bkFolderRel = false;
 if($bkBase) {
     if(is_dir($bkBase)) {
-        $bkFolder = $bkBase . '/' . (strpos(trailingslashit($bkBase), trailingslashit($folder)) === 0 ? 'ShortPixelBackups' : basename($folder));
+        $bkBase = trailingslashit($bkBase);
+        $bkFolder = $bkBase . (strpos($bkBase, trailingslashit($folder)) === 0 ? 'ShortPixelBackups' : basename($folder) . (strpos($bkBase, trailingslashit(dirname($folder))) === 0 ? "_SP_BKP" : "" ));
         $bkFolderRel = \ShortPixel\Settings::pathToRelative($bkFolder, $targetFolder);
     } else {
         die(splog("Backup path does not exist ($bkFolder)")."\n");

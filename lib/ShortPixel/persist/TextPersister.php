@@ -473,7 +473,7 @@ class TextPersister implements Persister {
             "percent" => 0.0 + trim(substr($line, 52, 6)),
             "optimizedSize" => 0 + trim(substr($line, 58, 9)),
             "changeDate" => strtotime(trim(substr($line, 67, 20))),
-            "file" => trim(substr($line, 87, 256)),
+            "file" => rtrim(substr($line, 87, 256)), //rtrim because there could be file names starting with a blank!! (had that)
             "message" => trim(substr($line, 343, 120)),
         );
         if(!in_array($ret->status, self::$ALLOWED_STATUSES) || !$ret->changeDate) {
