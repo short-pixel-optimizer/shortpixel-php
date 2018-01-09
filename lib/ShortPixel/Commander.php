@@ -25,7 +25,7 @@ class Commander {
     }
 
     /**
-     * @param int $type 1 - lossy (default), 0 - lossless
+     * @param int $type 1 - lossy (default), 2 - glossy, 0 - lossless
      * @return $this
      */
     public function optimize($type = 1) {
@@ -37,10 +37,11 @@ class Commander {
      * resize the image - performs an outer resize (meaning the image will preserve aspect ratio and have the smallest sizes that allow a rectangle with given width and height to fit inside the resized image)
      * @param $width
      * @param $height
+     * @param bool $inner - default, false, true to resize to maximum width or height (both smaller or equal)
      * @return $this
      */
-    public function resize($width, $height) {
-        $this->commands = array_merge($this->commands, array("resize" => 1, "resize_width" => $width, "resize_height" => $height));
+    public function resize($width, $height, $inner = false) {
+        $this->commands = array_merge($this->commands, array("resize" => ($inner ? 3 : 1), "resize_width" => $width, "resize_height" => $height));
         return $this;
     }
 

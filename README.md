@@ -56,12 +56,21 @@ ShortPixel\fromFile("/path/to/your/local/unoptimized.png")->toFiles("/path/to/sa
 // Compress with default settings from several local files
 ShortPixel\fromFiles(array("/path/to/your/local/unoptimized1.png", "/path/to/your/local/unoptimized2.png"))->toFiles("/path/to/save/to");
 
-// Compress and resize
-ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->resize(100, 100)->toFiles("/path/to/save/to", "optimized.png");
+// Compress with a specific compression level: 0 - lossless, 1 - lossy (default), 2 - glossy
+ShortPixel\fromFile("/path/to/your/local/unoptimized.png")->compress(2)->toFiles("/path/to/save/to");
+
+// Compress and resize - image is resized to have the either width equal to specified or height equal to specified 
+//   but not LESS (with settings below, a 300x200 image will be resized to 150x100)
+ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->resize(100, 100)->toFiles("/path/to/save/to");
+// Compress and resize - have the either width equal to specified or height equal to specified 
+//   but not MORE (with settings below, a 300x200 image will be resized to 100x66)
+ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->resize(100, 100, true)->toFiles("/path/to/save/to");
+
 // Keep the exif when compressing
-ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->keepExif()->toFiles("/path/to/save/to", "optimized.png");
+ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->keepExif()->toFiles("/path/to/save/to");
+
 // Also generate and save a WebP version of the file - the WebP file will be saved next to the optimized file, with  same basename and .webp extension
-ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->keepExif()->toFiles("/path/to/save/to", "optimized.png");
+ShortPixel\fromUrls("https://your.site/img/unoptimized.png")->generateWebP()->toFiles("/path/to/save/to");
 
 //Compress from a folder - the status of the compressed images is saved in a text file named .shortpixel in each image folder
 \ShortPixel\ShortPixel::setOptions(array("persist_type" => "text"));

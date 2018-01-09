@@ -166,6 +166,20 @@ class Result {
                     }
                     continue;
                 }
+                //IF file is locally accessible, the source file size should be the same as the size downloaded by (or posted to) ShortPixel servers
+                elseif(file_exists($originalPath) && filesize($originalPath) != $item->OriginalSize) {
+                    $item->Status->Code = -110;
+                    $item->Status->Message = "Wrong original size. Expected (local source file): " . filesize($originalPath) . " downloaded by ShortPixel: " . $item->OriginalSize;
+                    $status = $this->persist($item, $cmds, 'error');
+                    if($status == 'pending') {
+                        $retry = true;
+                    } else {
+                        $failed[] = $item;
+                        $this->commander->isDone($item);
+                        $this->removeItem($item, $pending, "OriginalURL");
+                    }
+                    continue;
+                }
                 elseif($item->PercentImprovement == 0) {
                     //sometimes the percent is 0 and the size is different (by some octets) so put the correct size in place
                     if(file_exists($originalPath)) {
@@ -203,7 +217,7 @@ class Result {
                         }
                     }
                     $optURL = $cmds["lossy"] > 0 ? $item->LossyURL : $item->LosslessURL; //this works also for glossy (2)
-                    $optSize = $cmds["lossy"] > 0 ? $item->LossySize : $item->LosslessSize;
+                    $optSize = $cmds["lossy"] > 0 ? $item->LossySize : $item->LoselessSize;
 
                     $downloadOK = ShortPixel::getClient()->download($optURL, $target, $optSize);
                     if(!$downloadOK) { // the size is wrong - probably in metadata, retry the image altogether
@@ -310,7 +324,7 @@ class Result {
             "percent" => isset($item->PercentImprovement) ? number_format(100.0 - 100.0 * $optimizedSize / $item->OriginalSize, 2) : 0, //$item->PercentImprovement : 0,
             "optimizedSize" => $optimizedSize,
             "changeDate" => time(),
-            "message" => null
+            "message" => null //will be set by persist() if 'error'
         );
     }
 
