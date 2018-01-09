@@ -107,6 +107,8 @@ vendor/bin/phpunit
 
 ### Integration tests
 
+Currently the integration tests were taken out in a separate project, at github's request (contained more than 200Mb test images). If you want to run the integration tests by yourself, please [contact us](https://shortpixel.com/contact) and will provide the integration tests.
+
 ```
 composer install
 SHORTPIXEL_KEY=$YOUR_API_KEY vendor/bin/phpunit --no-configuration test/integration.php
