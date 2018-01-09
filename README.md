@@ -57,7 +57,7 @@ ShortPixel\fromFile("/path/to/your/local/unoptimized.png")->toFiles("/path/to/sa
 ShortPixel\fromFiles(array("/path/to/your/local/unoptimized1.png", "/path/to/your/local/unoptimized2.png"))->toFiles("/path/to/save/to");
 
 // Compress with a specific compression level: 0 - lossless, 1 - lossy (default), 2 - glossy
-ShortPixel\fromFile("/path/to/your/local/unoptimized.png")->compress(2)->toFiles("/path/to/save/to");
+ShortPixel\fromFile("/path/to/your/local/unoptimized.png")->optimize(2)->toFiles("/path/to/save/to");
 
 // Compress and resize - image is resized to have the either width equal to specified or height equal to specified 
 //   but not LESS (with settings below, a 300x200 image will be resized to 150x100)
