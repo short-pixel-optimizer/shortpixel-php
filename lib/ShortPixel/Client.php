@@ -8,7 +8,7 @@ class Client {
     private $options;
     public static function API_URL() {
         return "https://api.shortpixel.com";
-        //return "https://devapi.shortpixel.com";
+        //* DEVELOPMENT !! */ return "https://devapi.shortpixel.com";
     }
     public static function API_ENDPOINT() {
         return self::API_URL() . "/v2/reducer.php";

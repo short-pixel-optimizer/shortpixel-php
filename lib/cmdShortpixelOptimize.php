@@ -47,6 +47,12 @@ if($bkBase) {
     }
 }
 
+//handle the ctrl+C
+if (function_exists('pcntl_signal')) {
+    declare(ticks=1); // PHP internal, make signal handling work
+    pcntl_signal(SIGINT, 'spCmdSignalHandler');
+}
+
 //sanity checks
 if(!$apiKey || strlen($apiKey) != 20 || !ctype_alnum($apiKey)) {
     die(splog("Please provide a valid API Key")."\n");
@@ -109,7 +115,7 @@ try {
         echo(splog("Congratulations, the folder is optimized."));
     }
     else {
-        while ($tries < 1000) {
+        while ($tries < 100000) {
             try {
                 if ($webPath) {
                     $result = \ShortPixel\fromWebFolder($folder, $webPath, array(), $targetFolderParam)->wait(300)->toFiles($targetFolder);
@@ -122,6 +128,8 @@ try {
                     break;
                 } else {
                     echo(splog("ClientException: " . $ex->getMessage() . " (CODE: " . $ex->getCode() . ")"));
+                    $tries++;
+                    continue;
                 }
             }
             $tries++;
@@ -142,13 +150,14 @@ try {
             if ($verbose) {
                 echo("PASS $tries : " . count($result->succeeded) . " succeeded, " . count($result->pending) . " pending, " . count($result->same) . " don't need optimization, " . count($result->failed) . " failed\n");
                 foreach ($result->succeeded as $item) {
-                    echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");
+                    echo(" - " . $item->SavedFile . " " . $item->Status->Message . " ("
+                        . ($item->PercentImprovement > 0 ? "Reduced by " . $item->PercentImprovement . "%" : "") . ($item->PercentImprovement < 5 ? " - Bonus processing" : ""). ")\n");
                 }
                 foreach ($result->pending as $item) {
                     echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");
                 }
                 foreach ($result->same as $item) {
-                    echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");
+                    echo(" - " . $item->SavedFile . " " . $item->Status->Message . " (Bonus processing)\n");
                 }
                 foreach ($result->failed as $item) {
                     echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");
@@ -211,4 +220,11 @@ function verifyFolder($folder, $create = false)
 
 function trailingslashit($path) {
     return rtrim($path, '/') . '/';
+}
+
+function spCmdSignalHandler($signo)
+{
+    global $splock;
+    $splock->unlock();
+    die(splog("Caught interrupt signal, exiting.") . "\n");
 }

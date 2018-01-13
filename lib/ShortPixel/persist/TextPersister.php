@@ -253,6 +253,7 @@ class TextPersister implements Persister {
                     $this->updateMeta($dataArr[$file], $fp);
                 }
                 $results[] = $filePath;
+                $totalFileSize += filesize($filePath);
                 $remain--;
 
                 if($remain <= 0) {
