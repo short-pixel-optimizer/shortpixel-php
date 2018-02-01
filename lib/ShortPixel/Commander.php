@@ -41,7 +41,7 @@ class Commander {
      * @return $this
      */
     public function resize($width, $height, $inner = false) {
-        $this->commands = array_merge($this->commands, array("resize" => ($inner ? 3 : 1), "resize_width" => $width, "resize_height" => $height));
+        $this->commands = array_merge($this->commands, array("resize" => ($inner ? ShortPixel::RESIZE_INNER : ShortPixel::RESIZE_OUTER), "resize_width" => $width, "resize_height" => $height));
         return $this;
     }
 

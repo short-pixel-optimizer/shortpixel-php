@@ -6,9 +6,14 @@ namespace ShortPixel;
 class Client {
 
     private $options;
+    public static function API_DOMAIN() {
+        return "api.shortpixel.com";
+        //* DEVELOPMENT !! */ return "devapi.shortpixel.com";
+        //* DEVELOPMENT !! */ return "devapi2.shortpixel.com";
+    }
     public static function API_URL() {
-        return "https://api.shortpixel.com";
-        //* DEVELOPMENT !! */ return "https://devapi.shortpixel.com";
+        return "https://" . self::API_DOMAIN();
+
     }
     public static function API_ENDPOINT() {
         return self::API_URL() . "/v2/reducer.php";
