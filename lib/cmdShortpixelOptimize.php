@@ -36,6 +36,13 @@ $bkBase = isset($options["backupBase"]) ? verifyFolder($options["backupBase"]) :
 $verbose = isset($options["verbose"]);
 $clearLock = isset($options["clearLock"]);
 
+if(!function_exists('curl_version')) {
+    die(splog("cURL is not enabled. ShortPixel needs Curl to send the images to optimization and retrieve the results. Please enable cURL and retry."));
+} elseif($verbose) {
+    $ver = curl_version();
+    echo(splog("cURL version: " . $ver['version']));
+}
+
 if($webPath === false && isset($options["webPath"])) {
     die(splog("The Web Path specified is invalid - " . $options["webPath"])."\n");
 }
