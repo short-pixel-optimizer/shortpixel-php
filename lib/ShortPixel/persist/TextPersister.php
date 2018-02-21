@@ -165,7 +165,7 @@ class TextPersister implements Persister {
 
         $results = array();
         $pendingURLs = array();
-        $ignore = array_values(array_merge($exclude, array('.','..','ShortPixelBackups')));
+        $ignore = array_values(array_merge($exclude, array('.','..','.shortpixel','.sp-options','ShortPixelBackups')));
         $remain = $count;
         $maxTotalFileSize = $maxTotalFileSizeMb * pow(1024, 2);
         $totalFileSize = 0;
@@ -230,7 +230,9 @@ class TextPersister implements Persister {
                             $toUpdate = true;
                         }
                     }
-                    elseif($dataArr[$file]->status == 'pending' && strpos($dataArr[$file]->message, str_replace("https://", "http://",\ShortPixel\Client::API_URL())) === 0) {
+
+                    elseif($dataArr[$file]->status == 'pending' && preg_match("/http[s]{0,1}:\/\/" . Client::API_DOMAIN() . "/", $dataArr[$file]->message)) {
+                    //elseif($dataArr[$file]->status == 'pending' && strpos($dataArr[$file]->message, str_replace("https://", "http://",\ShortPixel\Client::API_URL())) === 0) {
                         //the file is already uploaded and the call should  be made with the existent URL on the optimization server
                         $apiURL = $dataArr[$file]->message;
                         $pendingURLs[$apiURL] = $filePath;

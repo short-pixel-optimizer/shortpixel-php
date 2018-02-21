@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.1.5";
+    const VERSION = "1.1.6";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -13,6 +13,9 @@ class ShortPixel {
 
     const LOSSY_EXIF_TAG = "SPXLY";
     const LOSSLESS_EXIF_TAG = "SPXLL";
+
+    const RESIZE_OUTER = 1;
+    const RESIZE_INNER = 3;
 
     private static $key = NULL;
     private static $client = NULL;
