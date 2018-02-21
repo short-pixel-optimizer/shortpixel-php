@@ -94,7 +94,7 @@ class ShortPixel {
     }
 
     /**
-     * @return the Client singleton
+     * @return Client singleton
      * @throws AccountException
      */
     public static function getClient() {

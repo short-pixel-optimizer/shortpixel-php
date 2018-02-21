@@ -20,6 +20,10 @@ require_once("shortpixel-php-req.php");
 
 $processId = uniqid();
 
+if ($verbose) {
+    echo(splog("ShortPixel CLI version " . \ShortPixel\ShortPixel::VERSION));
+}
+
 $options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "speed::", "backupBase::", "verbose", "clearLock"));
 
 $apiKey = isset($options["apiKey"]) ? $options["apiKey"] : false;
