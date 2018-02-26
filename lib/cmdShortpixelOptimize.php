@@ -20,11 +20,12 @@ require_once("shortpixel-php-req.php");
 
 $processId = uniqid();
 
+$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "speed::", "backupBase::", "verbose", "clearLock", "exclude::"));
+
+$verbose = isset($options["verbose"]);
 if ($verbose) {
     echo(splog("ShortPixel CLI version " . \ShortPixel\ShortPixel::VERSION));
 }
-
-$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "speed::", "backupBase::", "verbose", "clearLock"));
 
 $apiKey = isset($options["apiKey"]) ? $options["apiKey"] : false;
 $folder = isset($options["folder"]) ? verifyFolder($options["folder"]) : false;
@@ -33,8 +34,8 @@ $webPath = isset($options["webPath"]) ? filter_var($options["webPath"], FILTER_V
 $compression = isset($options["compression"]) ? intval($options["compression"]) : false;
 $speed = isset($options["speed"]) ? intval($options["speed"]) : false;
 $bkBase = isset($options["backupBase"]) ? verifyFolder($options["backupBase"]) : false;
-$verbose = isset($options["verbose"]);
 $clearLock = isset($options["clearLock"]);
+$exclude = isset($options["exclude"]) ? explode(",", $options["exclude"]) : array();
 
 if(!function_exists('curl_version')) {
     die(splog("cURL is not enabled. ShortPixel needs Curl to send the images to optimization and retrieve the results. Please enable cURL and retry."));
@@ -106,6 +107,9 @@ try {
     if($bkFolderRel) {
         $overrides['backup_path'] = $bkFolderRel;
     }
+    if(!count($exclude) && (isset($folderOptions["exclude"]))) {
+        $exclude = $folderOptions["exclude"];
+    }
     \ShortPixel\ShortPixel::setOptions(array_merge($folderOptions, $overrides, array("persist_type" => "text")));
 
     $imageCount = $failedImageCount = $sameImageCount = 0;
@@ -113,7 +117,7 @@ try {
     $folderOptimized = false;
     $targetFolderParam = ($targetFolder !== $folder ? $targetFolder : false);
 
-    $info = \ShortPixel\folderInfo($folder, true, false, array(), $targetFolderParam);
+    $info = \ShortPixel\folderInfo($folder, true, false, $exclude, $targetFolderParam);
 
     if($info->status == 'error') {
         $splock->unlock();
@@ -129,10 +133,10 @@ try {
         while ($tries < 100000) {
             try {
                 if ($webPath) {
-                    $result = \ShortPixel\fromWebFolder($folder, $webPath, array(), $targetFolderParam)->wait(300)->toFiles($targetFolder);
+                    $result = \ShortPixel\fromWebFolder($folder, $webPath, $exclude, $targetFolderParam)->wait(300)->toFiles($targetFolder);
                 } else {
                     $speed = ($speed ? $speed : \ShortPixel\ShortPixel::MAX_ALLOWED_FILES_PER_CALL);
-                    $result = \ShortPixel\fromFolder($folder, $speed, array(), $targetFolderParam)->wait(300)->toFiles($targetFolder);
+                    $result = \ShortPixel\fromFolder($folder, $speed, $exclude, $targetFolderParam)->wait(300)->toFiles($targetFolder);
                 }
             } catch (\ShortPixel\ClientException $ex) {
                 if ($ex->getCode() == \ShortPixel\ClientException::NO_FILE_FOUND) {
