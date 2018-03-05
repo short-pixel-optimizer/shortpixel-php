@@ -11,7 +11,7 @@ interface Persister {
     function isOptimized($path);
     function getOptimizationData($path);
     function info($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false);
-    function getTodo($path, $count, $exclude = array(), $persistFolder = false, $maxTotalFileSize = false);
+    function getTodo($path, $count, $exclude = array(), $persistFolder = false, $maxTotalFileSize = false, $recurseDepth = PHP_INT_MAX);
     function getNextTodo($path, $count);
     function doneGet();
     function setPending($path, $optData);

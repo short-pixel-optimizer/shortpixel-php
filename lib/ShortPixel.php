@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.1.7";
+    const VERSION = "1.2.0";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -197,16 +197,17 @@ function fromFile($path) {
 /**
  * Stub for Source::folderInfo
  * @param $path - the file path on the local drive
- * @param $recurse - boolean - go into subfolders or not
- * @param $fileList - return the list of files with optimization status (only current folder, not subfolders)
- * @param $exclude - array of folder names that you want to exclude from the optimization
- * @param $persistPath - the path where to look for the metadata, if different from the $path
- * @return (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
- * @throws ClientException
+ * @param bool $recurse - boolean - go into subfolders or not
+ * @param bool $fileList - return the list of files with optimization status (only current folder, not subfolders)
+ * @param array $exclude - array of folder names that you want to exclude from the optimization
+ * @param bool $persistPath - the path where to look for the metadata, if different from the $path
+ * @param int $recurseDepth - how many subfolders deep to go. Defaults to PHP_INT_MAX
+ * @return object|void (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
+ * @throws PersistException
  */
-function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false) {
+function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false, $recurseDepth = PHP_INT_MAX) {
     $source = new Source();
-    return $source->folderInfo($path, $recurse, $fileList, $exclude, $persistPath);
+    return $source->folderInfo($path, $recurse, $fileList, $exclude, $persistPath, $recurseDepth);
 }
 
 /**
@@ -219,9 +220,9 @@ function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(
  * @return Commander - the class that handles the optimization commands
  * @throws ClientException
  */
-function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $exclude = array(), $persistPath = false, $maxTotalFileSize = ShortPixel::CLIENT_MAX_BODY_SIZE) {
+function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $exclude = array(), $persistPath = false, $maxTotalFileSize = ShortPixel::CLIENT_MAX_BODY_SIZE, $recurseDepth = PHP_INT_MAX) {
     $source = new Source();
-    return $source->fromFolder($path, $maxFiles, $exclude, $persistPath, $maxTotalFileSize);
+    return $source->fromFolder($path, $maxFiles, $exclude, $persistPath, $maxTotalFileSize, $recurseDepth);
 }
 
 /**
@@ -229,13 +230,14 @@ function fromFolder($path, $maxFiles = ShortPixel::MAX_ALLOWED_FILES_PER_CALL, $
  * @param $path - the file path on the local drive
  * @param $webPath - the corresponding web path for the file path
  * @param array $exclude - exclude files based on regex patterns
- * @param $persistFolder - the path where to store the metadata, if different from the $path (usually the target path)
+ * @param bool $persistFolder - the path where to store the metadata, if different from the $path (usually the target path)
+ * @param int $recurseDepth - how many subfolders deep to go. Defaults to PHP_INT_MAX
  * @return Commander - the class that handles the optimization commands
  * @throws ClientException
  */
-function fromWebFolder($path, $webPath, $exclude = array(), $persistFolder = false) {
+function fromWebFolder($path, $webPath, $exclude = array(), $persistFolder = false, $recurseDepth = PHP_INT_MAX) {
     $source = new Source();
-    return $source->fromWebFolder($path, $webPath, $exclude, $persistFolder);
+    return $source->fromWebFolder($path, $webPath, $exclude, $persistFolder, $recurseDepth);
 }
 
 function fromBuffer($string) {

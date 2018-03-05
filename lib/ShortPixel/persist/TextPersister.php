@@ -49,7 +49,7 @@ class TextPersister implements Persister {
         return false;
     }
 
-    function info($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false) {
+    function info($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false, $recurseDepth = PHP_INT_MAX) {
         if($persistPath === false) {
             $persistPath = $path;
         }
@@ -79,8 +79,8 @@ class TextPersister implements Persister {
                     continue;
                 }
                 if (is_dir($filePath)) {
-                    if(!$recurse) continue;
-                    $subInfo = $this->info($filePath, $recurse, $fileList, $exclude, $targetFilePath);
+                    if(!$recurse || $recurseDepth <= 0) continue;
+                    $subInfo = $this->info($filePath, $recurse, $fileList, $exclude, $targetFilePath, $recurseDepth - 1);
                     if($subInfo->status == 'error') {
                         return $subInfo;
                     }
@@ -123,7 +123,7 @@ class TextPersister implements Persister {
             if($info->pending == 0) {
                 $info->status = 'success';
             }
-            $info->todo = $this->getTodo($path, 1, $exclude, $persistPath);
+            $info->todo = $this->getTodo($path, 1, $exclude, $persistPath, ShortPixel::CLIENT_MAX_BODY_SIZE, $recurseDepth);
         }
         else {
             $persistFolder = dirname($persistPath);
@@ -150,7 +150,7 @@ class TextPersister implements Persister {
         return (object)$info;
     }
 
-    function getTodo($path, $count, $exclude = array(), $persistPath = false, $maxTotalFileSizeMb = ShortPixel::CLIENT_MAX_BODY_SIZE)
+    function getTodo($path, $count, $exclude = array(), $persistPath = false, $maxTotalFileSizeMb = ShortPixel::CLIENT_MAX_BODY_SIZE, $recurseDepth = PHP_INT_MAX)
     {
         if(!file_exists($path) || !is_dir($path)) {
             return array();
@@ -192,11 +192,12 @@ class TextPersister implements Persister {
                 }
             }
             if(is_dir($filePath)) {
+                if($recurseDepth <= 0) continue;
                 if(!isset($dataArr[$file])) {
                     $dataArr[$file] = $this->newMeta($targetPath);
                     $dataArr[$file]->filePos = $this->appendMeta($dataArr[$file], $fp);
                 }
-                $resultsSubfolder =  $this->getTodo($filePath, $count, $exclude, $targetPath);
+                $resultsSubfolder =  $this->getTodo($filePath, $count, $exclude, $targetPath, $maxTotalFileSizeMb, $recurseDepth - 1);
                 if(count($resultsSubfolder->files)) {
                     if($toClose) { $this->closeMetaFile($persistPath); }
                     return $resultsSubfolder;

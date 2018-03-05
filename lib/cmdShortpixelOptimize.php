@@ -18,13 +18,15 @@
 
 require_once("shortpixel-php-req.php");
 
-$processId = uniqid();
+use \ShortPixel\SPLog;
 
-$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "speed::", "backupBase::", "verbose", "clearLock", "exclude::"));
+$processId = uniqid("CLI");
+
+$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "speed::", "backupBase::", "verbose", "clearLock", "exclude::", "recurseDepth::"));
 
 $verbose = isset($options["verbose"]);
 if ($verbose) {
-    echo(splog("ShortPixel CLI version " . \ShortPixel\ShortPixel::VERSION));
+    echo(SPLog::format("ShortPixel CLI version " . \ShortPixel\ShortPixel::VERSION));
 }
 
 $apiKey = isset($options["apiKey"]) ? $options["apiKey"] : false;
@@ -36,16 +38,17 @@ $speed = isset($options["speed"]) ? intval($options["speed"]) : false;
 $bkBase = isset($options["backupBase"]) ? verifyFolder($options["backupBase"]) : false;
 $clearLock = isset($options["clearLock"]);
 $exclude = isset($options["exclude"]) ? explode(",", $options["exclude"]) : array();
+$recurseDepth = isset($options["recurseDepth"]) && is_numeric($options["recurseDepth"]) && $options["recurseDepth"] >= 0 ? $options["recurseDepth"] : PHP_INT_MAX;
 
 if(!function_exists('curl_version')) {
-    die(splog("cURL is not enabled. ShortPixel needs Curl to send the images to optimization and retrieve the results. Please enable cURL and retry."));
+    die(SPLog::format("cURL is not enabled. ShortPixel needs Curl to send the images to optimization and retrieve the results. Please enable cURL and retry."));
 } elseif($verbose) {
     $ver = curl_version();
-    echo(splog("cURL version: " . $ver['version']));
+    echo(SPLog::format("cURL version: " . $ver['version']));
 }
 
 if($webPath === false && isset($options["webPath"])) {
-    die(splog("The Web Path specified is invalid - " . $options["webPath"])."\n");
+    die(SPLog::format("The Web Path specified is invalid - " . $options["webPath"])."\n");
 }
 
 $bkFolder = $bkFolderRel = false;
@@ -55,7 +58,7 @@ if($bkBase) {
         $bkFolder = $bkBase . (strpos($bkBase, trailingslashit($folder)) === 0 ? 'ShortPixelBackups' : basename($folder) . (strpos($bkBase, trailingslashit(dirname($folder))) === 0 ? "_SP_BKP" : "" ));
         $bkFolderRel = \ShortPixel\Settings::pathToRelative($bkFolder, $targetFolder);
     } else {
-        die(splog("Backup path does not exist ($bkFolder)")."\n");
+        die(SPLog::format("Backup path does not exist ($bkFolder)")."\n");
     }
 }
 
@@ -67,18 +70,18 @@ if (function_exists('pcntl_signal')) {
 
 //sanity checks
 if(!$apiKey || strlen($apiKey) != 20 || !ctype_alnum($apiKey)) {
-    die(splog("Please provide a valid API Key")."\n");
+    die(SPLog::format("Please provide a valid API Key")."\n");
 }
 
 if(!$folder || strlen($folder) == 0) {
-    die(splog("Please specify a folder to optimize")."\n");
+    die(SPLog::format("Please specify a folder to optimize")."\n");
 }
 
 if($targetFolder != $folder) {
     if(strpos($targetFolder, trailingslashit($folder)) === 0) {
-        die(splog("Target folder cannot be a subfolder of the source folder. ( $targetFolder $folder)"));
+        die(SPLog::format("Target folder cannot be a subfolder of the source folder. ( $targetFolder $folder)"));
     } elseif (strpos($folder, trailingslashit($targetFolder)) === 0) {
-        die(splog("Target folder cannot be a parent folder of the source folder."));
+        die(SPLog::format("Target folder cannot be a parent folder of the source folder."));
     } else {
         @mkdir($targetFolder, 0777, true);
     }
@@ -89,7 +92,7 @@ try {
     $splock = new \ShortPixel\Lock($processId, $targetFolder, $clearLock);
     $splock->lock();
 
-    echo(splog("Starting to optimize folder $folder using API Key $apiKey ..."));
+    echo(SPLog::format("Starting to optimize folder $folder using API Key $apiKey ..."));
 
     ShortPixel\setKey($apiKey);
 
@@ -117,32 +120,32 @@ try {
     $folderOptimized = false;
     $targetFolderParam = ($targetFolder !== $folder ? $targetFolder : false);
 
-    $info = \ShortPixel\folderInfo($folder, true, false, $exclude, $targetFolderParam);
+    $info = \ShortPixel\folderInfo($folder, true, false, $exclude, $targetFolderParam, $recurseDepth);
 
     if($info->status == 'error') {
         $splock->unlock();
-        die(splog("Error: " . $info->message . " (Code: " . $info->code . ")"));
+        die(SPLog::format("Error: " . $info->message . " (Code: " . $info->code . ")"));
     }
 
-    echo(splog("Folder has " . $info->total . " files, " . $info->succeeded . " optimized, " . $info->pending . " pending, " . $info->same . " don't need optimization, " . $info->failed . " failed."));
+    echo(SPLog::format("Folder has " . $info->total . " files, " . $info->succeeded . " optimized, " . $info->pending . " pending, " . $info->same . " don't need optimization, " . $info->failed . " failed."));
 
     if($info->status == "success") {
-        echo(splog("Congratulations, the folder is optimized."));
+        echo(SPLog::format("Congratulations, the folder is optimized."));
     }
     else {
         while ($tries < 100000) {
             try {
                 if ($webPath) {
-                    $result = \ShortPixel\fromWebFolder($folder, $webPath, $exclude, $targetFolderParam)->wait(300)->toFiles($targetFolder);
+                    $result = \ShortPixel\fromWebFolder($folder, $webPath, $exclude, $targetFolderParam, $recurseDepth)->wait(300)->toFiles($targetFolder);
                 } else {
                     $speed = ($speed ? $speed : \ShortPixel\ShortPixel::MAX_ALLOWED_FILES_PER_CALL);
-                    $result = \ShortPixel\fromFolder($folder, $speed, $exclude, $targetFolderParam)->wait(300)->toFiles($targetFolder);
+                    $result = \ShortPixel\fromFolder($folder, $speed, $exclude, $targetFolderParam, \ShortPixel\ShortPixel::CLIENT_MAX_BODY_SIZE, $recurseDepth)->wait(300)->toFiles($targetFolder);
                 }
             } catch (\ShortPixel\ClientException $ex) {
                 if ($ex->getCode() == \ShortPixel\ClientException::NO_FILE_FOUND) {
                     break;
                 } else {
-                    echo(splog("ClientException: " . $ex->getMessage() . " (CODE: " . $ex->getCode() . ")"));
+                    echo(SPLog::format("ClientException: " . $ex->getMessage() . " (CODE: " . $ex->getCode() . ")"));
                     $tries++;
                     continue;
                 }
@@ -190,12 +193,12 @@ try {
             $splock->lock();
         }
 
-        echo(splog("This pass: $imageCount images optimized, $sameImageCount don't need optimization, $failedImageCount failed to optimize." . ($folderOptimized ? " Congratulations, the folder is optimized.":"")));
-        if ($crtImageCount > 0) echo(splog("Images still pending, please relaunch the script to continue."));
+        echo(SPLog::format("This pass: $imageCount images optimized, $sameImageCount don't need optimization, $failedImageCount failed to optimize." . ($folderOptimized ? " Congratulations, the folder is optimized.":"")));
+        if ($crtImageCount > 0) echo(SPLog::format("Images still pending, please relaunch the script to continue."));
         echo("\n");
     }
 } catch(\Exception $e) {
-    echo("\n" . splog($e->getMessage() . "( code: " . $e->getCode() . " type: " . get_class($e) . " )") . "\n");
+    echo("\n" . SPLog::format($e->getMessage() . "( code: " . $e->getCode() . " type: " . get_class($e) . " )") . "\n");
 }
 
 //cleanup the lock file
@@ -227,7 +230,7 @@ function verifyFolder($folder, $create = false)
             }
         }
         if (!is_dir($folder)) {
-            die(splog("The folder $folder does not exist.") . "\n");
+            die(SPLog::format("The folder $folder does not exist.") . "\n");
         }
     }
     return $folder . $suffix;
@@ -241,5 +244,5 @@ function spCmdSignalHandler($signo)
 {
     global $splock;
     $splock->unlock();
-    die(splog("Caught interrupt signal, exiting.") . "\n");
+    die(SPLog::format("Caught interrupt signal, exiting.") . "\n");
 }

@@ -69,14 +69,14 @@ class ExifPersister implements Persister {
         throw new Exception("Not implemented");
     }
 
-    function getTodo($path, $count, $exclude = array(), $persistFolder = false, $maxTotalFileSize = false)
+    function getTodo($path, $count, $exclude = array(), $persistFolder = false, $maxTotalFileSize = false, $recurseDepth = PHP_INT_MAX)
     {
         $results = array();
-        $this->getTodoRecursive($path, $count, array_values(array_merge($exclude, array('.','..'))), $results);
+        $this->getTodoRecursive($path, $count, array_values(array_merge($exclude, array('.','..'))), $results, $recurseDepth);
         return  $results;
     }
 
-    private function getTodoRecursive($path, &$count, $ignore, &$results) {
+    private function getTodoRecursive($path, &$count, $ignore, &$results, $recurseDepth) {
         if($count <= 0) return;
         $files = scandir($path);
         foreach($files as $t) {
@@ -84,7 +84,8 @@ class ExifPersister implements Persister {
             if(in_array($t, $ignore)) continue;
             $tpath = rtrim($path, '/') . '/' . $t;
             if (is_dir($tpath)) {
-                self::getTodoRecursive($tpath, $count, $ignore, $results);
+                if($recurseDepth <= 0) continue;
+                self::getTodoRecursive($tpath, $count, $ignore, $results, $recurseDepth -1);
             } elseif( \ShortPixel\ShortPixel::isProcessable($t)
                      && !$this->isOptimized($tpath)) {
                 $results[] = $tpath;

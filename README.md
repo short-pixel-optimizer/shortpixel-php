@@ -84,9 +84,9 @@ $ret = ShortPixel\fromFolder("/path/to/your/local/folder", 0, array, "/different
 $ret = ShortPixel\fromWebFolder("/path/to/your/local/folder", "http://web.path/to/your/local/folder")->wait(300)->toFiles("/path/to/save/to");
 //let ShortPixel back-up all your files, before overwriting them (third parameter of toFiles).
 $ret = ShortPixel\fromFolder("/path/to/your/local/folder")->wait(300)->toFiles("/path/to/save/to", null, "/back-up/path");
+//Recurse only <<N>> levels down into the subfolders of the folder ( N == 0 means do not recurse )
+$ret = ShortPixel\fromFolder("/path/to/your/local/folder", 0, array(), false, ShortPixel::CLIENT_MAX_BODY_SIZE, <<N>>)->wait(300)->toFiles("/path/to/save/to");
 
-
-$ret = ShortPixel\fromFolder("/path/to/your/local/folder")->wait(300)->toFiles("/path/to/save/to");
 //A simple loop to optimize all images from a folder
 $stop = false;
 while(!$stop) {
