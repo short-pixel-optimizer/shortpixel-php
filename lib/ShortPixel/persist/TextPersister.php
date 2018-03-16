@@ -144,7 +144,7 @@ class TextPersister implements Persister {
             }
 
             if($toClose) {
-                $this->closeLastOpenMetaFile();
+                $this->closeMetaFile($persistFolder);
             }
         }
         return (object)$info;
