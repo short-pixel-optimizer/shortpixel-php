@@ -363,7 +363,11 @@ class TextPersister implements Persister {
             $data = $this->parse($line);
             if($data) {
                 $data->filePos = $i;
-                $dataArr[$data->file] = $data;
+                if(isset($dataArr[$data->file])) {
+                    $err = true; //found situations where a line was duplicated, will rewrite but take only the first
+                } else {
+                    $dataArr[$data->file] = $data;
+                }
             } else {
                 $err = true;
             }
