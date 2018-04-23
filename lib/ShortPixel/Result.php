@@ -1,6 +1,7 @@
 <?php
 
 namespace ShortPixel;
+use ShortPixel\notify\ProgressNotifier;
 
 /**
  * Class Result - handles the result of the optimization (saves to file or returns a buffer, etc)
@@ -202,7 +203,7 @@ class Result {
                 }
 
                 if(!is_dir($targetPath) && !@mkdir($targetPath, 0777, true)) { //create the folder
-                    throw new ClientException("The destination path cannot be found.");
+                    throw new ClientException("The destination path $targetPath cannot be found.");
                 }
 
                 //Now that's an optimized image indeed
@@ -212,7 +213,7 @@ class Result {
                         if(!is_dir($bkCrtPath) && !@mkdir($bkCrtPath, 0777, true)) {
                             throw new Exception("Cannot create backup folder " . $bkCrtPath, -1);
                         }
-                        if(!copy($originalPath, $bkCrtPath . MB_basename($originalPath))) {
+                        if(!copy($originalPath, $bkCrtPath . MB_basename($originalPath)) && !file_exists($bkCrtPath . MB_basename($originalPath))) {
                             throw new Exception("Cannot copy to backup folder " . $bkCrtPath, -1);
                         }
                     }
@@ -273,13 +274,20 @@ class Result {
             }
         }
 
-        return (object) array(
+        $ret = (object) array(
             'status' => array('code' => 1, 'message' => 'pending'),
             'succeeded' => $succeeded,
             'pending' => $pending,
             'failed' => $failed,
             'same' => $same
         );
+        if($cmds['notify_progress']) {
+            //notify the progress to whom it may concern :)
+            $notifier = ProgressNotifier::constructNotifier($path);
+            $notifier->recordProgress($ret);
+        }
+
+        return $ret;
     }
 
     private function checkSaveWebP($item, $target, $cmds)

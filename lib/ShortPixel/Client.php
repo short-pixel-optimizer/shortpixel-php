@@ -194,16 +194,6 @@ class Client {
 
         $details = json_decode($body);
 
-        if(getenv("SHORTPIXEL_DEBUG")) {
-            $info = '';
-            if(is_array($details)) {
-                foreach($details as $det) {
-                    $info .= $det->Status->Code . " " . $det->OriginalURL . (isset($det->localPath) ? "({$det->localPath})" : "" ) . "\n";
-                }
-            } else {
-                $info = $response;
-            }
-        }
         if (!$details) {
             $message = sprintf("Error while parsing response: %s (#%d)",
                 PHP_VERSION_ID >= 50500 ? json_last_error_msg() : "Error",
@@ -214,6 +204,17 @@ class Client {
                 "message" => $message . "( " . $body . ")",
                 "Status" => (object)array("Code" => -1, "Message" => "ParseError: " . $message)
             );
+        }
+
+        if(getenv("SHORTPIXEL_DEBUG")) {
+            $info = "DETAILS\n";
+            if(is_array($details)) {
+                foreach($details as $det) {
+                    $info .= $det->Status->Code . " " . $det->OriginalURL . (isset($det->localPath) ? "({$det->localPath})" : "" ) . "\n";
+                }
+            } else {
+                $info = $response;
+            }
         }
 
         $fileMappings = array();
@@ -229,7 +230,7 @@ class Client {
         }
 
         if(getenv("SHORTPIXEL_DEBUG")) {
-            $info = '';
+            $info .= "FILE MAPPINGS\n";
             foreach($fileMappings as $key => $val) {
                 $info .= "$key -> $val\n";
             }

@@ -49,105 +49,140 @@ class TextPersister implements Persister {
         return false;
     }
 
-    function info($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false, $recurseDepth = PHP_INT_MAX) {
+    protected function ignored($exclude) {
+        return array_values(array_merge(array('.','..','.','..','.shortpixel','.sp-options','.sp-lock','.sp-progress','ShortPixelBackups'), is_array($exclude) ? $exclude : array()));
+    }
+
+    /**
+     * @param $path - the file path on the local drive
+     * @param bool $recurse - boolean - go into subfolders or not
+     * @param bool $fileList - return the list of files with optimization status (only current folder, not subfolders)
+     * @param array $exclude - array of folder names that you want to exclude from the optimization
+     * @param bool $persistPath - the path where to look for the metadata, if different from the $path
+     * @param int $recurseDepth - how many subfolders deep to go. Defaults to PHP_INT_MAX
+     * @param bool $retrySkipped - if true, all skipped files will be reset to pending with retries = 0
+     * @return object|void (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
+     * @throws PersistException
+     */
+    function info($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false, $recurseDepth = PHP_INT_MAX, $retrySkipped = false) {
         if($persistPath === false) {
             $persistPath = $path;
         }
-        if(is_dir($path)) {
-            try {
-                $toClose = $this->openMetaFileIfNeeded($persistPath);
-                $fp = $this->getMetaFile($persistPath);
-                $dataArr = $this->readMetaFile($fp);
-            } catch(ClientException $e) {
-                if(is_dir($persistPath) && file_exists($persistPath . '/' . ShortPixel::opt("persist_name"))) {
-                    return (object)array('status' => 'error', 'message' => $e->getMessage(), 'code' => $e->getCode());
-                }
-                $dataArr = array(); //there's no problem if the metadata file is missing and cannot be created, for the info call
-            }
+        $toClose = false; $persistFolder = false;
+        $info = array('status' => 'error', 'message' => "Unknown error, please contact support.", 'code' => -999);
 
-            $info = (object)array('status' => 'pending', 'total' => 0, 'succeeded' => 0, 'pending' => 0, 'same' => 0, 'failed' => 0, 'todo' => null);
-            $files = scandir($path);
-            $ignore = array_merge(array('.','..','ShortPixelBackups'), $exclude);
+        try {
+            if(is_dir($path)) {
+                try {
+                    $persistFolder = $persistPath;
+                    $toClose = $this->openMetaFileIfNeeded($persistFolder);
+                    $fp = $this->getMetaFile($persistPath);
+                    $dataArr = $this->readMetaFile($fp);
+                } catch(ClientException $e) {
+                    if(is_dir($persistPath) && file_exists($persistPath . '/' . ShortPixel::opt("persist_name"))) {
+                        throw $e; //rethrow, there's a problem with the meta file.
+                    }
+                    $dataArr = array(); //there's no problem if the metadata file is missing and cannot be created, for the info call
+                }
 
-            foreach($files as $file) {
-                $filePath = $path . '/' . $file;
-                $targetFilePath = $persistPath . '/' . $file;
-                if (in_array($file, $ignore)
-                    || (!ShortPixel::isProcessable($file) && !is_dir($filePath))
-                    || isset($dataArr[$file]) && $dataArr[$file]->status == 'deleted'
-                ) {
-                    continue;
-                }
-                if (is_dir($filePath)) {
-                    if(!$recurse || $recurseDepth <= 0) continue;
-                    $subInfo = $this->info($filePath, $recurse, $fileList, $exclude, $targetFilePath, $recurseDepth - 1);
-                    if($subInfo->status == 'error') {
-                        return $subInfo;
+                $info = (object)array('status' => 'pending', 'total' => 0, 'succeeded' => 0, 'pending' => 0, 'same' => 0, 'failed' => 0, 'totalSize'=> 0, 'totalOptimizedSize'=> 0, 'todo' => null);
+                $files = scandir($path);
+                $ignore = $this->ignored($exclude);
+
+                foreach($files as $file) {
+                    $filePath = $path . '/' . $file;
+                    $targetFilePath = $persistPath . '/' . $file;
+                    if (in_array($file, $ignore)
+                        || (!ShortPixel::isProcessable($file) && !is_dir($filePath))
+                        || isset($dataArr[$file]) && $dataArr[$file]->status == 'deleted'
+                    ) {
+                        continue;
                     }
-                    $info->total += $subInfo->total;
-                    $info->succeeded += $subInfo->succeeded;
-                    $info->pending += $subInfo->pending;
-                    $info->same += $subInfo->same;
-                    $info->failed += $subInfo->failed;
-                }
-                else {
-                    $info->total++;
-                    if(!isset($dataArr[$file]) || $dataArr[$file]->status == 'pending') {
-                        $info->pending++;
+                    if (is_dir($filePath)) {
+                        if(!$recurse || $recurseDepth <= 0) continue;
+                        $subInfo = $this->info($filePath, $recurse, $fileList, $exclude, $targetFilePath, $recurseDepth - 1);
+                        if($subInfo->status == 'error') {
+                            $info = $subInfo;
+                            break;
+                        }
+                        $info->total += $subInfo->total;
+                        $info->succeeded += $subInfo->succeeded;
+                        $info->pending += $subInfo->pending;
+                        $info->same += $subInfo->same;
+                        $info->failed += $subInfo->failed;
+                        $info->totalSize += $subInfo->totalSize;
+                        $info->totalOptimizedSize += $subInfo->totalOptimizedSize;
                     }
-                    elseif(($dataArr[$file]->status == 'success' && filesize($targetFilePath) != $dataArr[$file]->optimizedSize)
-                        || ($dataArr[$file]->status == 'skip' &&  $dataArr[$file]->retries <= ShortPixel::MAX_RETRIES)) {
-                        //file changed since last optimized, mark it as pending
-                        $dataArr[$file]->status = 'pending';
-                        $this->updateMeta($dataArr[$file], $fp);
-                        $info->pending++;
-                    }
-                    elseif($dataArr[$file]->status == 'success') {
-                        if($dataArr[$file]->percent > 0) {
-                            $info->succeeded++;
-                        } else {
-                            $info->same++;
+                    else {
+                        $info->total++;
+                        if(!isset($dataArr[$file]) || $dataArr[$file]->status == 'pending') {
+                            $info->pending++;
+                        }
+                        elseif(($dataArr[$file]->status == 'success' && filesize($targetFilePath) != $dataArr[$file]->optimizedSize)
+                            || ($dataArr[$file]->status == 'skip' &&  ($dataArr[$file]->retries <= ShortPixel::MAX_RETRIES || $retrySkipped))) {
+                            //file changed since last optimized, mark it as pending
+                            $dataArr[$file]->status = 'pending';
+                            if($dataArr[$file]->status == 'skip' && $retrySkipped) {
+                                $dataArr[$file]->retries = 0;
+                            }
+                            $this->updateMeta($dataArr[$file], $fp);
+                            $info->pending++;
+                        }
+                        elseif($dataArr[$file]->status == 'success') {
+                            if($dataArr[$file]->percent > 0) {
+                                $info->succeeded++;
+                                $info->totalOptimizedSize += $dataArr[$file]->optimizedSize;
+                                $info->totalSize += round(100.0 * $dataArr[$file]->optimizedSize / (100.0 - $dataArr[$file]->percent));
+                            } else {
+                                $info->same++;
+                            }
+                        }
+                        elseif($dataArr[$file]->status == 'skip'){
+                            $info->failed++;
                         }
                     }
-                    elseif($dataArr[$file]->status == 'skip'){
-                        $info->failed++;
+                    if($fileList) $info->fileList = $dataArr;
+                }
+
+                if(isset($info->pending) && $info->pending == 0 && $info->status !== 'error') {
+                    $info->status = 'success';
+                }
+                if($info->status !== 'error') {
+                    $info->todo = $this->getTodo($path, 1, $exclude, $persistPath, ShortPixel::CLIENT_MAX_BODY_SIZE, $recurseDepth);
+                }
+            }
+            else {
+                if(!file_exists($persistPath)) {
+                    throw new ClientException("File not found: $persistPath", -15);
+                }
+                $persistFolder = dirname($persistPath);
+                $meta = $toClose = false;
+                try {
+                    $toClose = $this->openMetaFileIfNeeded($persistFolder);
+                    $meta = $this->findMeta($persistPath);
+                } catch(ClientException $e) {
+                    if(is_dir($persistFolder) && file_exists($persistFolder . '/' . ShortPixel::opt("persist_name"))) {
+                        throw $e;
                     }
                 }
-                if($fileList) $info->fileList = $dataArr;
-            }
 
-            if($toClose) {
-                $this->closeMetaFile($persistPath);
-            }
-
-            if($info->pending == 0) {
-                $info->status = 'success';
-            }
-            $info->todo = $this->getTodo($path, 1, $exclude, $persistPath, ShortPixel::CLIENT_MAX_BODY_SIZE, $recurseDepth);
-        }
-        else {
-            $persistFolder = dirname($persistPath);
-            $meta = $toClose = false;
-            try {
-                $toClose = $this->openMetaFileIfNeeded($persistFolder);
-                $meta = $this->findMeta($persistPath);
-            } catch(ClientException $e) {
-                if(is_dir($persistFolder) && file_exists($persistFolder . '/' . ShortPixel::opt("persist_name"))) {
-                    return (object)array('status' => 'error', 'message' => $e->getMessage(), 'code' => $e->getCode());
+                if(!$meta) {
+                    $info = (object)array('status' => 'pending');
+                } else {
+                    $info = (object)array('status' => $meta->getStatus());
                 }
-            }
 
-            if(!$meta) {
-                $info = array('status' => 'pending');
-            } else {
-                $info = array('status' => $meta->getStatus());
             }
-
+        }
+        catch(ClientException $e) {
+            $info = (object)array('status' => 'error', 'message' => $e->getMessage(), 'code' => $e->getCode());
+        }
+        finally {
             if($toClose) {
                 $this->closeMetaFile($persistFolder);
             }
+            return $info;
         }
-        return (object)$info;
     }
 
     function getTodo($path, $count, $exclude = array(), $persistPath = false, $maxTotalFileSizeMb = ShortPixel::CLIENT_MAX_BODY_SIZE, $recurseDepth = PHP_INT_MAX)
@@ -165,7 +200,7 @@ class TextPersister implements Persister {
 
         $results = array();
         $pendingURLs = array();
-        $ignore = array_values(array_merge($exclude, array('.','..','.shortpixel','.sp-options','ShortPixelBackups')));
+        $ignore = $this->ignored($exclude);
         $remain = $count;
         $maxTotalFileSize = $maxTotalFileSizeMb * pow(1024, 2);
         $totalFileSize = 0;
@@ -247,6 +282,9 @@ class TextPersister implements Persister {
                 if(filesize($filePath) + $totalFileSize > $maxTotalFileSize){
                     if(filesize($filePath) > $maxTotalFileSize) { //skip this as it won't ever be selected with current settings
                         $dataArr[$file]->status = 'skip';
+                        if(filesize($filePath) > ShortPixel::CLIENT_MAX_BODY_SIZE * pow(1024, 2)) {
+                            $dataArr[$file]->retries = 99;
+                        }
                         $dataArr[$file]->message = 'File larger than the set limit of ' . $maxTotalFileSizeMb . 'MBytes';
                         $this->updateMeta($dataArr[$file], $fp); //this one is too big, we skipped it, just continue with next.
                     }

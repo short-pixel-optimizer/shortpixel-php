@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.2.1";
+    const VERSION = "1.3.0";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -39,6 +39,7 @@ class ShortPixel {
         // **** persist options ****
         "persist_type" => null, // null - don't persist, otherwise "text" (.shortpixel text file in each folder), "exif" (mark in the EXIF that the image has been optimized) or "mysql" (to be implemented)
         "persist_name" => ".shortpixel",
+        "notify_progress" => false,
         //"persist_user" => "user", // only for mysql
         //"persist_pass" => "pass" // only for mysql
         // "" => null,
@@ -202,12 +203,13 @@ function fromFile($path) {
  * @param array $exclude - array of folder names that you want to exclude from the optimization
  * @param bool $persistPath - the path where to look for the metadata, if different from the $path
  * @param int $recurseDepth - how many subfolders deep to go. Defaults to PHP_INT_MAX
+ * @param bool $retrySkipped - if true, all skipped files will be reset to pending with retries = 0
  * @return object|void (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
  * @throws PersistException
  */
-function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false, $recurseDepth = PHP_INT_MAX) {
+function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false, $recurseDepth = PHP_INT_MAX, $retrySkipped = false) {
     $source = new Source();
-    return $source->folderInfo($path, $recurse, $fileList, $exclude, $persistPath, $recurseDepth);
+    return $source->folderInfo($path, $recurse, $fileList, $exclude, $persistPath, $recurseDepth, $retrySkipped);
 }
 
 /**

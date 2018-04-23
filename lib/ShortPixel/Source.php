@@ -43,21 +43,22 @@ class Source {
 
     /**
      * returns the optimization counters of the folder and subfolders
-     * @param $path
-     * @param bool $recurse
-     * @param bool $fileList
-     * @param array $exclude
-     * @param bool $persistPath
+     * @param $path - the file path on the local drive
+     * @param bool $recurse - boolean - go into subfolders or not
+     * @param bool $fileList - return the list of files with optimization status (only current folder, not subfolders)
+     * @param array $exclude - array of folder names that you want to exclude from the optimization
+     * @param bool $persistPath - the path where to look for the metadata, if different from the $path
      * @param int $recurseDepth - how many subfolders deep to go. Defaults to PHP_INT_MAX
-     * @return object|void array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
+     * @param bool $retrySkipped - if true, all skipped files will be reset to pending with retries = 0
+     * @return object|void (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
      * @throws PersistException
      */
-    public function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false, $recurseDepth = PHP_INT_MAX){
+    public function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false, $recurseDepth = PHP_INT_MAX, $retrySkipped = false){
         $persister = ShortPixel::getPersister($path);
         if(!$persister) {
             throw new PersistException("Persist is not enabled in options, needed for fetching folder info");
         }
-        return $persister->info($path, $recurse, $fileList, $exclude, $persistPath, $recurseDepth);
+        return $persister->info($path, $recurse, $fileList, $exclude, $persistPath, $recurseDepth, $retrySkipped);
     }
 
     /**

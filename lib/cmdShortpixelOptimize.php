@@ -13,7 +13,7 @@
  *   - add --clearLock to clear a lock that's already placed on the folder. BE SURE you know what you're doing, files might get corrupted if the previous script is still running. The locks expire in 6 min. anyway.
  *   - add --quiet for no output - TBD
  *   - the backup path will be used as parent directory to the backup folder which, if the backup path is outside the optimized folder, will be the basename of the folder, otherwise will be ShortPixelBackup
- * The script will read the .sp-options configuration file and will honour the parameters set there, with the command line parameters having priority
+ * The script will read the .sp-options configuration file and will honour the parameters set there, but the command line parameters take priority
  */
 
 require_once("shortpixel-php-req.php");
@@ -22,7 +22,7 @@ use \ShortPixel\SPLog;
 
 $processId = uniqid("CLI");
 
-$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "speed::", "backupBase::", "verbose", "clearLock", "exclude::", "recurseDepth::"));
+$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped", "exclude::", "recurseDepth::"));
 
 $verbose = isset($options["verbose"]);
 if ($verbose) {
@@ -37,6 +37,7 @@ $compression = isset($options["compression"]) ? intval($options["compression"]) 
 $speed = isset($options["speed"]) ? intval($options["speed"]) : false;
 $bkBase = isset($options["backupBase"]) ? verifyFolder($options["backupBase"]) : false;
 $clearLock = isset($options["clearLock"]);
+$retrySkipped = isset($options["retrySkipped"]);
 $exclude = isset($options["exclude"]) ? explode(",", $options["exclude"]) : array();
 $recurseDepth = isset($options["recurseDepth"]) && is_numeric($options["recurseDepth"]) && $options["recurseDepth"] >= 0 ? $options["recurseDepth"] : PHP_INT_MAX;
 
@@ -87,10 +88,21 @@ if($targetFolder != $folder) {
     }
 }
 
+$notifier = \ShortPixel\notify\ProgressNotifier::constructNotifier($folder);
+if($verbose) {
+    echo(SPLog::format("Using notifier: " . get_class($notifier))."\n");
+}
+
 try {
     //check if the folder is not locked by another ShortPixel process
     $splock = new \ShortPixel\Lock($processId, $targetFolder, $clearLock);
-    $splock->lock();
+    try {
+        $splock->lock();
+    } catch(\Exception $ex) {
+        if ($verbose) { echo(SPLog::format("Waiting for lock..."));}
+        $splock->requestLock("CLI");
+        if ($verbose) { echo(SPLog::format("Lock aquired"));}
+    }
 
     echo(SPLog::format("Starting to optimize folder $folder using API Key $apiKey ..."));
 
@@ -99,8 +111,11 @@ try {
     //try to get optimization options from the folder .sp-options
     $optionsHandler = new \ShortPixel\Settings();
     $folderOptions = $optionsHandler->readOptions($targetFolder);
-    if(!isset($webPath) && $optionsHandler->get("base_url")) {
-        $webPath = $optionsHandler->get("base_url");
+    if((!isset($webPath) || !$webPath) && isset($folderOptions["base_url"]) && strlen($folderOptions["base_url"])) {
+        $webPath = $folderOptions["base_url"];
+        if($verbose) {
+            echo(SPLog::format("Using Web Path from settings: $webPath"));
+        }
     }
 
     $overrides = array();
@@ -110,17 +125,18 @@ try {
     if($bkFolderRel) {
         $overrides['backup_path'] = $bkFolderRel;
     }
-    if(!count($exclude) && (isset($folderOptions["exclude"]))) {
+    if(!count($exclude) && isset($folderOptions["exclude"]) && strlen($folderOptions["exclude"])) {
         $exclude = $folderOptions["exclude"];
     }
-    \ShortPixel\ShortPixel::setOptions(array_merge($folderOptions, $overrides, array("persist_type" => "text")));
+    \ShortPixel\ShortPixel::setOptions(array_merge($folderOptions, $overrides, array("persist_type" => "text", "notify_progress" => true)));
 
     $imageCount = $failedImageCount = $sameImageCount = 0;
     $tries = 0;
     $folderOptimized = false;
     $targetFolderParam = ($targetFolder !== $folder ? $targetFolder : false);
 
-    $info = \ShortPixel\folderInfo($folder, true, false, $exclude, $targetFolderParam, $recurseDepth);
+    $info = \ShortPixel\folderInfo($folder, true, false, $exclude, $targetFolderParam, $recurseDepth, $retrySkipped);
+    $notifier->recordProgress($info, true);
 
     if($info->status == 'error') {
         $splock->unlock();
@@ -198,6 +214,10 @@ try {
         echo("\n");
     }
 } catch(\Exception $e) {
+    //record progress only if it's not a lock exception.
+    if($e->getCode() != -19) {
+        $notifier->recordProgress((object)array("status" => (object)array("code" => $e->getCode(), "message" => $e->getMessage())), true);
+    }
     echo("\n" . SPLog::format($e->getMessage() . "( code: " . $e->getCode() . " type: " . get_class($e) . " )") . "\n");
 }
 
@@ -233,7 +253,7 @@ function verifyFolder($folder, $create = false)
             die(SPLog::format("The folder $folder does not exist.") . "\n");
         }
     }
-    return $folder . $suffix;
+    return str_replace(DIRECTORY_SEPARATOR, '/', $folder . $suffix);
 }
 
 function trailingslashit($path) {

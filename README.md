@@ -95,8 +95,11 @@ while(!$stop) {
         $stop = true;
     }
 }
-//Alternatively, you might want to add the call to a cron job
+
 ```
+There are more code examples in the examples/integration.php file.
+
+Alternatively, you might want to add the call to a cron job using the cmdShortPixelOptimizer.php script found in lib/. More details about its usage here: [ShortPixel CLI](https://shortpixel.com/cli-docs)
 
 ## Running tests
 
