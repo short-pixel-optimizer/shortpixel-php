@@ -177,12 +177,13 @@ class TextPersister implements Persister {
         catch(ClientException $e) {
             $info = (object)array('status' => 'error', 'message' => $e->getMessage(), 'code' => $e->getCode());
         }
-        finally {
+        catch(\Exception $e) { //that should've been a finally but we need to be PHP5.4 compatible...
             if($toClose) {
                 $this->closeMetaFile($persistFolder);
             }
-            return $info;
+            throw $e;
         }
+        return $info;
     }
 
     function getTodo($path, $count, $exclude = array(), $persistPath = false, $maxTotalFileSizeMb = ShortPixel::CLIENT_MAX_BODY_SIZE, $recurseDepth = PHP_INT_MAX)
@@ -505,6 +506,8 @@ class TextPersister implements Persister {
 
     protected function parse($line) {
         if(strlen(rtrim($line, "\r\n")) != (self::LINE_LENGTH - 2)) return false;
+        $percent = trim(substr($line, 52, 6));
+        $optimizedSize = trim(substr($line, 58, 9));
         $ret = (object) array(
             "type" => trim(substr($line, 0, 2)),
             "status" => trim(substr($line, 2, 11)),
@@ -516,8 +519,8 @@ class TextPersister implements Persister {
             "resizeWidth" => trim(substr($line, 30, 6)),
             "resizeHeight" => trim(substr($line, 36, 6)),
             "convertto" => trim(substr($line, 42, 10)),
-            "percent" => 0.0 + trim(substr($line, 52, 6)),
-            "optimizedSize" => 0 + trim(substr($line, 58, 9)),
+            "percent" => is_numeric($percent) ? floatval($percent) : 0.0,
+            "optimizedSize" => is_numeric($optimizedSize) ? intval($optimizedSize) : 0,
             "changeDate" => strtotime(trim(substr($line, 67, 20))),
             "file" => rtrim(substr($line, 87, 256)), //rtrim because there could be file names starting with a blank!! (had that)
             "message" => trim(substr($line, 343, 120)),

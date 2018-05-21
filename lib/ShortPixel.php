@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.3.0";
+    const VERSION = "1.3.1";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -313,7 +313,8 @@ function MB_basename($Path, $suffix = false){
     $Separator = " qq ";
     $qqPath = preg_replace("/[^ ]/u", $Separator."\$0".$Separator, $Path);
     if(!$qqPath) { //this is not an UTF8 string!!
-        $fileName = end(explode(DIRECTORY_SEPARATOR, $Path));
+        $pathElements = explode(DIRECTORY_SEPARATOR, $Path);
+        $fileName = end($pathElements);
         $pos = strpos($fileName, $suffix);
         if($pos !== false) {
             return substr($fileName, 0, $pos);
