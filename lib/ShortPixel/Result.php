@@ -130,7 +130,7 @@ class Result {
 
                 if($item->Status->Code == 1) {
                     $found = $this->findItem($item, $pending, "OriginalURL");
-                    if(!$found) {
+                    if($found === false) {
                         $item->Retries = 1;
                         $pending[] = $item;
                         $this->persist($item, $cmds, 'pending');

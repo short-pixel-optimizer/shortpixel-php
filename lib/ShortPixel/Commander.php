@@ -203,7 +203,10 @@ class Commander {
     public function isDone($item) {
         //remove from local files list
         if(isset($this->data["files"]) && is_array($this->data["files"])) {
-            if (isset($item->SavedFile)) {
+            if (isset($item->OriginalFile)) {
+                $this->data["files"] = array_diff($this->data["files"], array($item->OriginalFile));
+            }
+            elseif (isset($item->SavedFile)) {
                 $this->data["files"] = array_diff($this->data["files"], array($item->SavedFile));
             }
             elseif(isset($item->OriginalURL) && isset($this->data["pendingURLs"][$item->OriginalURL])) {
