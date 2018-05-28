@@ -173,14 +173,8 @@ class TextPersister implements Persister {
                 }
 
             }
-            if($toClose) {
-                $this->closeMetaFile($persistFolder);
-            }
         }
         catch(ClientException $e) {
-            if($toClose) {
-                $this->closeMetaFile($persistFolder);
-            }
             $info = (object)array('status' => 'error', 'message' => $e->getMessage(), 'code' => $e->getCode());
         }
         catch(\Exception $e) { //that should've been a finally but we need to be PHP5.4 compatible...
@@ -188,6 +182,9 @@ class TextPersister implements Persister {
                 $this->closeMetaFile($persistFolder);
             }
             throw $e;
+        }
+        if($toClose) {
+            $this->closeMetaFile($persistFolder);
         }
         return $info;
     }
