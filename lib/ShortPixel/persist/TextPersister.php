@@ -118,8 +118,8 @@ class TextPersister implements Persister {
                         if(!isset($dataArr[$file]) || $dataArr[$file]->status == 'pending') {
                             $info->pending++;
                         }
-                        elseif(($dataArr[$file]->status == 'success' && filesize($targetFilePath) != $dataArr[$file]->optimizedSize)
-                            || ($dataArr[$file]->status == 'skip' &&  ($dataArr[$file]->retries <= ShortPixel::MAX_RETRIES || $retrySkipped))) {
+                        elseif(   $dataArr[$file]->status == 'success' && $this->isChanged($dataArr[$file], $file, $persistPath, $path)
+                               || ($dataArr[$file]->status == 'skip' &&  ($dataArr[$file]->retries <= ShortPixel::MAX_RETRIES || $retrySkipped))) {
                             //file changed since last optimized, mark it as pending
                             $dataArr[$file]->status = 'pending';
                             if($dataArr[$file]->status == 'skip' && $retrySkipped) {
@@ -216,7 +216,7 @@ class TextPersister implements Persister {
                || (!ShortPixel::isProcessable($file) && !is_dir($filePath))
                || isset($dataArr[$file]) && $dataArr[$file]->status == 'deleted'
                || isset($dataArr[$file])
-                  && (   $dataArr[$file]->status == 'success' && filesize($targetPath) == $dataArr[$file]->optimizedSize
+                  && (  $dataArr[$file]->status == 'success' && !$this->isChanged($dataArr[$file], $file, $persistPath, $path)
                       || $dataArr[$file]->status == 'skip') ) {
                 continue;
             }
@@ -316,6 +316,18 @@ class TextPersister implements Persister {
         }
 */
         return (object)array('files' => $results, 'filesPending' => $pendingURLs, 'filesWaiting' => $filesWaiting, 'refresh' => false);
+    }
+
+    /**
+     * @param $data - the .shortpixel metadata
+     * @param $file - the file basename
+     * @param $persistPath - the target path for the optimized files and for the .shortpixel metadata
+     * @param $sourcePath - the path of the original images
+     * @return bool true if the image is optimized but needs to be reoptimized because it changed
+     */
+    protected function isChanged($data, $file, $persistPath, $sourcePath ) {
+        return $persistPath === $sourcePath && filesize($sourcePath . '/' . $file) != $data->optimizedSize
+            || $persistPath !== $sourcePath && $data->originalSize > 0 && filesize($sourcePath . '/' . $file) != $data->originalSize;
     }
 
     function getNextTodo($path, $count)
@@ -432,7 +444,11 @@ class TextPersister implements Persister {
         }
         $fp = @fopen($metaFile, $type == 'update' ? 'c+' : 'r');
         if(!$fp) {
-            throw new ClientException("Could not open persistence file $metaFile. Please check rights.", -16);
+            if(is_dir($metaFile)) { //saw this for a client
+                throw new ClientException("Could not open persistence file $metaFile. There's already a directory with this name.", -16);
+            } else {
+                throw new ClientException("Could not open persistence file $metaFile. Please check rights.", -16);
+            }
         }
         return $fp;
     }
@@ -502,7 +518,9 @@ class TextPersister implements Persister {
             "optimizedSize" => null,
             "changeDate" => time(),
             "file" => \ShortPixel\MB_basename($file),
-            "message" => '');
+            "message" => '',
+            //file does not exist if source is a WebFolder and the optimized images are saved to a different target
+            "originalSize" => is_dir($file) || !file_exists($file) ? 0 : filesize($file));
     }
 
     const LINE_LENGTH = 465; //including the \r\n at the end
@@ -511,6 +529,7 @@ class TextPersister implements Persister {
         if(strlen(rtrim($line, "\r\n")) != (self::LINE_LENGTH - 2)) return false;
         $percent = trim(substr($line, 52, 6));
         $optimizedSize = trim(substr($line, 58, 9));
+        $originalSize = trim(substr($line, 454, 9));
         $ret = (object) array(
             "type" => trim(substr($line, 0, 2)),
             "status" => trim(substr($line, 2, 11)),
@@ -526,7 +545,8 @@ class TextPersister implements Persister {
             "optimizedSize" => is_numeric($optimizedSize) ? intval($optimizedSize) : 0,
             "changeDate" => strtotime(trim(substr($line, 67, 20))),
             "file" => rtrim(substr($line, 87, 256)), //rtrim because there could be file names starting with a blank!! (had that)
-            "message" => trim(substr($line, 343, 120)),
+            "message" => trim(substr($line, 343, 111)),
+            "originalSize" => is_numeric($originalSize) ? intval($originalSize) : 0,
         );
         if(!in_array($ret->status, self::$ALLOWED_STATUSES) || !$ret->changeDate) {
             return false;
@@ -535,7 +555,7 @@ class TextPersister implements Persister {
     }
 
     protected function assemble($data) {
-        return sprintf("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+        return sprintf("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
             str_pad($data->type, 2),
             str_pad($data->status, 11),
             str_pad($data->retries % 100, 2), // for folders, retries can be > 100 so do a sanity check here - we're not actually interested in folder retries
@@ -550,7 +570,8 @@ class TextPersister implements Persister {
             str_pad(substr(number_format($data->optimizedSize, 0, ".", ""),0 , 8), 9),
             str_pad(date("Y-m-d H:i:s", $data->changeDate), 20),
             str_pad(substr($data->file, 0, 255), 256),
-            str_pad(substr($data->message, 0, 119), 120)
+            str_pad(substr($data->message, 0, 110), 111),
+            str_pad(substr(number_format($data->originalSize, 0, ".", ""),0 , 8), 9)
         );
     }
 }
