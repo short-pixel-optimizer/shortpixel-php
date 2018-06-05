@@ -25,9 +25,8 @@ $processId = uniqid("CLI");
 $options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped", "exclude::", "recurseDepth::"));
 
 $verbose = isset($options["verbose"]);
-if ($verbose) {
-    echo(SPLog::format("ShortPixel CLI version " . \ShortPixel\ShortPixel::VERSION));
-}
+$logger = SPLog::Init($processId, SPLog::PRODUCER_CMD | ($verbose ? SPLog::PRODUCER_CMD_VERBOSE | SPLog::PRODUCER_PERSISTER : 0));
+$logger->log(SPLog::PRODUCER_CMD_VERBOSE, "ShortPixel CLI version " . \ShortPixel\ShortPixel::VERSION);
 
 $apiKey = isset($options["apiKey"]) ? $options["apiKey"] : false;
 $folder = isset($options["folder"]) ? verifyFolder($options["folder"]) : false;
@@ -42,14 +41,14 @@ $exclude = isset($options["exclude"]) ? explode(",", $options["exclude"]) : arra
 $recurseDepth = isset($options["recurseDepth"]) && is_numeric($options["recurseDepth"]) && $options["recurseDepth"] >= 0 ? $options["recurseDepth"] : PHP_INT_MAX;
 
 if(!function_exists('curl_version')) {
-    die(SPLog::format("cURL is not enabled. ShortPixel needs Curl to send the images to optimization and retrieve the results. Please enable cURL and retry."));
+    $logger->bye(SPLog::PRODUCER_CMD, "cURL is not enabled. ShortPixel needs Curl to send the images to optimization and retrieve the results. Please enable cURL and retry.");
 } elseif($verbose) {
     $ver = curl_version();
-    echo(SPLog::format("cURL version: " . $ver['version']));
+    $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "cURL version: " . $ver['version']);
 }
 
 if($webPath === false && isset($options["webPath"])) {
-    die(SPLog::format("The Web Path specified is invalid - " . $options["webPath"])."\n");
+    $logger->bye(SPLog::PRODUCER_CMD, "The Web Path specified is invalid - " . $options["webPath"]);
 }
 
 $bkFolder = $bkFolderRel = false;
@@ -59,7 +58,7 @@ if($bkBase) {
         $bkFolder = $bkBase . (strpos($bkBase, trailingslashit($folder)) === 0 ? 'ShortPixelBackups' : basename($folder) . (strpos($bkBase, trailingslashit(dirname($folder))) === 0 ? "_SP_BKP" : "" ));
         $bkFolderRel = \ShortPixel\Settings::pathToRelative($bkFolder, $targetFolder);
     } else {
-        die(SPLog::format("Backup path does not exist ($bkFolder)")."\n");
+        $logger->bye(SPLog::PRODUCER_CMD, "Backup path does not exist ($bkFolder)");
     }
 }
 
@@ -71,27 +70,25 @@ if (function_exists('pcntl_signal')) {
 
 //sanity checks
 if(!$apiKey || strlen($apiKey) != 20 || !ctype_alnum($apiKey)) {
-    die(SPLog::format("Please provide a valid API Key")."\n");
+    $logger->bye(SPLog::PRODUCER_CMD, "Please provide a valid API Key");
 }
 
 if(!$folder || strlen($folder) == 0) {
-    die(SPLog::format("Please specify a folder to optimize")."\n");
+    $logger->bye(SPLog::PRODUCER_CMD, "Please specify a folder to optimize");
 }
 
 if($targetFolder != $folder) {
     if(strpos($targetFolder, trailingslashit($folder)) === 0) {
-        die(SPLog::format("Target folder cannot be a subfolder of the source folder. ( $targetFolder $folder)"));
+        $logger->bye(SPLog::PRODUCER_CMD, "Target folder cannot be a subfolder of the source folder. ( $targetFolder $folder)");
     } elseif (strpos($folder, trailingslashit($targetFolder)) === 0) {
-        die(SPLog::format("Target folder cannot be a parent folder of the source folder."));
+        $logger->bye(SPLog::PRODUCER_CMD, "Target folder cannot be a parent folder of the source folder.");
     } else {
         @mkdir($targetFolder, 0777, true);
     }
 }
 
 $notifier = \ShortPixel\notify\ProgressNotifier::constructNotifier($folder);
-if($verbose) {
-    echo(SPLog::format("Using notifier: " . get_class($notifier))."\n");
-}
+$logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Using notifier: " . get_class($notifier));
 
 try {
     //check if the folder is not locked by another ShortPixel process
@@ -99,12 +96,12 @@ try {
     try {
         $splock->lock();
     } catch(\Exception $ex) {
-        if ($verbose) { echo(SPLog::format("Waiting for lock..."));}
+        $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Waiting for lock...");
         $splock->requestLock("CLI");
-        if ($verbose) { echo(SPLog::format("Lock aquired"));}
+        $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Lock aquired");
     }
 
-    echo(SPLog::format("Starting to optimize folder $folder using API Key $apiKey ..."));
+    $logger->log(SPLog::PRODUCER_CMD, "Starting to optimize folder $folder using API Key $apiKey ...");
 
     ShortPixel\setKey($apiKey);
 
@@ -113,9 +110,7 @@ try {
     $folderOptions = $optionsHandler->readOptions($targetFolder);
     if((!isset($webPath) || !$webPath) && isset($folderOptions["base_url"]) && strlen($folderOptions["base_url"])) {
         $webPath = $folderOptions["base_url"];
-        if($verbose) {
-            echo(SPLog::format("Using Web Path from settings: $webPath"));
-        }
+        $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Using Web Path from settings: $webPath");
     }
 
     $overrides = array();
@@ -140,13 +135,13 @@ try {
 
     if($info->status == 'error') {
         $splock->unlock();
-        die(SPLog::format("Error: " . $info->message . " (Code: " . $info->code . ")"));
+        $logger->bye(SPLog::PRODUCER_CMD, "Error: " . $info->message . " (Code: " . $info->code . ")");
     }
 
-    echo(SPLog::format("Folder has " . $info->total . " files, " . $info->succeeded . " optimized, " . $info->pending . " pending, " . $info->same . " don't need optimization, " . $info->failed . " failed."));
+    $logger->log(SPLog::PRODUCER_CMD, "Folder has " . $info->total . " files, " . $info->succeeded . " optimized, " . $info->pending . " pending, " . $info->same . " don't need optimization, " . $info->failed . " failed.");
 
     if($info->status == "success") {
-        echo(SPLog::format("Congratulations, the folder is optimized."));
+        $logger->log(SPLog::PRODUCER_CMD, "Congratulations, the folder is optimized.");
     }
     else {
         while ($tries < 100000) {
@@ -161,7 +156,7 @@ try {
                 if ($ex->getCode() == \ShortPixel\ClientException::NO_FILE_FOUND) {
                     break;
                 } else {
-                    echo(SPLog::format("ClientException: " . $ex->getMessage() . " (CODE: " . $ex->getCode() . ")"));
+                    $logger->log(SPLog::PRODUCER_CMD, "ClientException: " . $ex->getMessage() . " (CODE: " . $ex->getCode() . ")");
                     $tries++;
                     continue;
                 }
@@ -182,23 +177,23 @@ try {
                 $crtImageCount += count($result->pending);
             }
             if ($verbose) {
-                echo("PASS $tries : " . count($result->succeeded) . " succeeded, " . count($result->pending) . " pending, " . count($result->same) . " don't need optimization, " . count($result->failed) . " failed\n");
+                $msg = "\nPASS $tries : " . count($result->succeeded) . " succeeded, " . count($result->pending) . " pending, " . count($result->same) . " don't need optimization, " . count($result->failed) . " failed\n";
                 foreach ($result->succeeded as $item) {
-                    echo(" - " . $item->SavedFile . " " . $item->Status->Message . " ("
-                        . ($item->PercentImprovement > 0 ? "Reduced by " . $item->PercentImprovement . "%" : "") . ($item->PercentImprovement < 5 ? " - Bonus processing" : ""). ")\n");
+                    $msg .= " - " . $item->SavedFile . " " . $item->Status->Message . " ("
+                        . ($item->PercentImprovement > 0 ? "Reduced by " . $item->PercentImprovement . "%" : "") . ($item->PercentImprovement < 5 ? " - Bonus processing" : ""). ")\n";
                 }
                 foreach ($result->pending as $item) {
-                    echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");
+                    $msg .= " - " . $item->SavedFile . " " . $item->Status->Message . "\n";
                 }
                 foreach ($result->same as $item) {
-                    echo(" - " . $item->SavedFile . " " . $item->Status->Message . " (Bonus processing)\n");
+                    $msg .= " - " . $item->SavedFile . " " . $item->Status->Message . " (Bonus processing)\n";
                 }
                 foreach ($result->failed as $item) {
-                    echo(" - " . $item->SavedFile . " " . $item->Status->Message . "\n");
+                    $msg .= " - " . $item->SavedFile . " " . $item->Status->Message . "\n";
                 }
-                echo("\n");
+                $logger->logRaw($msg . "\n");
             } else {
-                echo(str_pad("", $crtImageCount, "#"));
+                $logger->logRaw(str_pad("", $crtImageCount, "#"));
             }
             //if no files were processed in this pass, the folder is done
             if ($crtImageCount == 0) {
@@ -209,8 +204,8 @@ try {
             $splock->lock();
         }
 
-        echo(SPLog::format("This pass: $imageCount images optimized, $sameImageCount don't need optimization, $failedImageCount failed to optimize." . ($folderOptimized ? " Congratulations, the folder is optimized.":"")));
-        if ($crtImageCount > 0) echo(SPLog::format("Images still pending, please relaunch the script to continue."));
+        $logger->log(SPLog::PRODUCER_CMD, "This pass: $imageCount images optimized, $sameImageCount don't need optimization, $failedImageCount failed to optimize." . ($folderOptimized ? " Congratulations, the folder is optimized.":""));
+        if ($crtImageCount > 0) $logger->log(SPLog::PRODUCER_CMD, "Images still pending, please relaunch the script to continue.");
         echo("\n");
     }
 } catch(\Exception $e) {
@@ -218,19 +213,15 @@ try {
     if($e->getCode() != -19) {
         $notifier->recordProgress((object)array("status" => (object)array("code" => $e->getCode(), "message" => $e->getMessage())), true);
     }
-    echo("\n" . SPLog::format($e->getMessage() . "( code: " . $e->getCode() . " type: " . get_class($e) . " )") . "\n");
+    $logger->log(SPLog::PRODUCER_CMD, "\n" . $e->getMessage() . "( code: " . $e->getCode() . " type: " . get_class($e) . " )" . "\n");
 }
 
 //cleanup the lock file
 $splock->unlock();
 
-function splog($msg) {
-    global $processId;
-    return "\n$processId@" . date("Y-m-d H:i:s") . "> $msg\n";
-}
-
 function verifyFolder($folder, $create = false)
 {
+    global $logger;
     $folder = rtrim($folder, '/');
     $suffix = '';
     if($create) {
@@ -250,7 +241,7 @@ function verifyFolder($folder, $create = false)
             }
         }
         if (!is_dir($folder)) {
-            die(SPLog::format("The folder $folder does not exist.") . "\n");
+            $logger->log(SPLog::PRODUCER_CMD, "The folder $folder does not exist.");
         }
     }
     return str_replace(DIRECTORY_SEPARATOR, '/', $folder . $suffix);
@@ -262,7 +253,7 @@ function trailingslashit($path) {
 
 function spCmdSignalHandler($signo)
 {
-    global $splock;
+    global $splock, $logger;
     $splock->unlock();
-    die(SPLog::format("Caught interrupt signal, exiting.") . "\n");
+    $logger->bye(SPLog::PRODUCER_CMD, "Caught interrupt signal, exiting.");
 }
