@@ -394,7 +394,7 @@ class Client {
         } else {
             // ATENTIE!!!!! daca s-a oprit aici e un caz de fisier cu dimensiunea diferita, de verificat
             @unlink($targetTemp);
-            return false; //will retry
+            return -$actualSize; //will retry
         }
         return true;
     }

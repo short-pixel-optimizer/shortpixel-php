@@ -5,12 +5,14 @@
  * Time: 14:59
  * Usage: cmdShortpixelOptimize.php --apiKey=<your-api-key-here> --folder=/full/path/to/your/images
  *   - add --compression=x : 1 for lossy, 2 for glossy and 0 for lossless
+ *   - add --resize=800x600/[type] where type can be 1 for outer resize (default) and 3 for inner resize
  *   - add --backupBase=/full/path/to/your/backup/basedir
  *   - add --targetFolder to specify a different destination for the optimized files.
  *   - add --webPath=http://yoursites.address/img/folder/ to map the folder to a web URL and have our servers download the images instead of posting them (less heavy on memory for large files)
  *   - add --speeed=x x between 1 and 10 - default is 10 but if you have large images it will eat up a lot of memory when creating the post messages so sometimes you might need to lower it. Not needed when using the webPath mapping.
  *   - add --verbose parameter for more info during optimization
  *   - add --clearLock to clear a lock that's already placed on the folder. BE SURE you know what you're doing, files might get corrupted if the previous script is still running. The locks expire in 6 min. anyway.
+ *   - add --logLevel for different areas of logging - bitwise flags: 4 for metadata handling, 8 for server comm (add them up to log more areas)
  *   - add --quiet for no output - TBD
  *   - the backup path will be used as parent directory to the backup folder which, if the backup path is outside the optimized folder, will be the basename of the folder, otherwise will be ShortPixelBackup
  * The script will read the .sp-options configuration file and will honour the parameters set there, but the command line parameters take priority
@@ -22,17 +24,20 @@ use \ShortPixel\SPLog;
 
 $processId = uniqid("CLI");
 
-$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped", "exclude::", "recurseDepth::"));
+$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "resize::", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped", "exclude::", "recurseDepth::", "logLevel::"));
 
-$verbose = isset($options["verbose"]);
-$logger = SPLog::Init($processId, SPLog::PRODUCER_CMD | ($verbose ? SPLog::PRODUCER_CMD_VERBOSE | SPLog::PRODUCER_PERSISTER : 0));
+$verbose = isset($options["verbose"]) ? (isset($options["logLevel"]) ? $options["logLevel"] : 0) | SPLog::PRODUCER_CMD_VERBOSE : 0;
+$logger = SPLog::Init($processId, $verbose | SPLog::PRODUCER_CMD);
 $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "ShortPixel CLI version " . \ShortPixel\ShortPixel::VERSION);
+
+$logger->log(SPLog::PRODUCER_CMD_VERBOSE, "ShortPixel Logging VERBOSE" . ($verbose & SPLog::PRODUCER_PERSISTER ? ", PERSISTER" : "") . ($verbose & SPLog::PRODUCER_CLIENT ? ", CLIENT" : ""));
 
 $apiKey = isset($options["apiKey"]) ? $options["apiKey"] : false;
 $folder = isset($options["folder"]) ? verifyFolder($options["folder"]) : false;
 $targetFolder = isset($options["targetFolder"]) ? verifyFolder($options["targetFolder"], true) : $folder;
 $webPath = isset($options["webPath"]) ? filter_var($options["webPath"], FILTER_VALIDATE_URL) : false;
 $compression = isset($options["compression"]) ? intval($options["compression"]) : false;
+$resizeRaw =  isset($options["resize"]) ? $options["resize"] : false;
 $speed = isset($options["speed"]) ? intval($options["speed"]) : false;
 $bkBase = isset($options["backupBase"]) ? verifyFolder($options["backupBase"]) : false;
 $clearLock = isset($options["clearLock"]);
@@ -113,10 +118,26 @@ try {
         $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Using Web Path from settings: $webPath");
     }
 
+    // ********************* OPTIMIZATION OPTIONS FROM COMMAND LINE TAKE PRECEDENCE *********************
     $overrides = array();
     if($compression !== false) {
         $overrides['lossy'] = $compression;
     }
+    if($resizeRaw !== false) {
+        $tmp = explode("/", $resizeRaw);
+        $resizeType = (count($tmp) == 2) && ($tmp[1] == 3) ? 3 : 1;
+        $sizes = explode("x", $tmp[0]);
+        if(count($sizes) == 2 and is_numeric($sizes[0]) && is_numeric($sizes[1])) {
+            $overrides['resize'] = $resizeType;
+            $overrides['resize_width'] = $sizes[0];
+            $overrides['resize_height'] = $sizes[1];
+            $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Resize type: " . ($resizeType == 3 ? "inner" : "outer") . ", width: {$overrides['resize_width']}, height: {$overrides['resize_height']}");
+        } else {
+            $splock->unlock();
+            $logger->bye(SPLog::PRODUCER_CMD, "Malformed parameter --resize, should be --resize=[width]x[height]/[type] type being 1 for outer and 3 for inner");
+        }
+    }
+
     if($bkFolderRel) {
         $overrides['backup_path'] = $bkFolderRel;
     }

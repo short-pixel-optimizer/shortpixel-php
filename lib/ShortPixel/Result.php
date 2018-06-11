@@ -72,7 +72,7 @@ class Result {
             $retry = false;
             foreach($items as $item) {
 
-                $targetPath = $path; $originalPath = false;
+                $targetPath = $path; $originalPath = $baseUrl = false;
 
                 if($this->ctx->fileMappings && count($this->ctx->fileMappings)) { // it was optimized from a local file, fileMappings contains the mappings from the local files to the internal ShortPixel URLs
                     $originalPath = isset($this->ctx->fileMappings[$item->OriginalURL]) ? $this->ctx->fileMappings[$item->OriginalURL] : false;
@@ -95,7 +95,7 @@ class Result {
                 } elseif(isset($item->OriginalURL)) {  // it was optimized from a URL
                     $baseUrl = ShortPixel::opt("base_url");
                     if($baseUrl && strlen($baseUrl)) {
-                        $origURLParts = explode('/', trim(rawurldecode(str_replace(ShortPixel::opt("base_url"), "", $item->OriginalURL)), '/'));
+                        $origURLParts = explode('/', trim(rawurldecode(str_replace($baseUrl, "", $item->OriginalURL)), '/'));
                         $origFileName = $origURLParts[count($origURLParts) - 1];
                         unset($origURLParts[count($origURLParts) - 1]);
                         $relativePath = implode('/', $origURLParts);
@@ -208,20 +208,38 @@ class Result {
 
                 //Now that's an optimized image indeed
                 try {
+                    $bkCrtFilePath = false;
                     if($bkPath && $originalPath) {
                         $bkCrtPath = rtrim($bkPath, '/') . '/' . (strlen($relativePath) ? $relativePath . '/' : '');
                         if(!is_dir($bkCrtPath) && !@mkdir($bkCrtPath, 0777, true)) {
                             throw new Exception("Cannot create backup folder " . $bkCrtPath, -1);
                         }
-                        if(!copy($originalPath, $bkCrtPath . MB_basename($originalPath)) && !file_exists($bkCrtPath . MB_basename($originalPath))) {
+                        $bkCrtFilePath = $bkCrtPath . MB_basename($originalPath);
+                        if(!copy($originalPath, $bkCrtFilePath) && !file_exists($bkCrtFilePath)) {
                             throw new Exception("Cannot copy to backup folder " . $bkCrtPath, -1);
                         }
                     }
+
+                    //try to figure out a backup URL
+                    if($baseUrl) {
+                        if($originalPath !== $targetPath) {
+                            $item->BackupURL = $item->OriginalURL;
+                        } elseif($bkCrtFilePath) {
+                            $deltaPos = strspn($path ^ $bkPath, "\0");
+                            $delta = substr($path, $deltaPos);
+                            $bkDelta = substr($bkPath, $deltaPos);
+                            if(strpos($baseUrl, $delta) > 0) {
+                                //only in this case there can be a backup URL (the backup path is inside the web root)
+                                $item->BackupURL = str_replace($delta, $bkDelta, $baseUrl) . '/' . (strlen($relativePath) ? $relativePath . '/' : '') . MB_basename($originalPath);
+                            }
+                        }
+                    }
+
                     $optURL = $cmds["lossy"] > 0 ? $item->LossyURL : $item->LosslessURL; //this works also for glossy (2)
                     $optSize = $cmds["lossy"] > 0 ? $item->LossySize : $item->LoselessSize;
 
                     $downloadOK = ShortPixel::getClient()->download($optURL, $target, $optSize);
-                    if(!$downloadOK) { // the size is wrong - probably in metadata, retry the image altogether
+                    if($downloadOK <= 0) { // the size is wrong - probably in metadata, retry the image altogether
                         $found = $this->findItem($item, $pending, "OriginalURL");
                         if($found === false) {
                             $item->Status->Code = 1;
@@ -233,7 +251,7 @@ class Result {
                             $pending[$found]->Retries += 1;
                         } else {
                             $item->Status->Code = -1;
-                            $item->Status->Message = "Wrong size";
+                            $item->Status->Message = "Wrong size, expected $optSize downloaded " . (-$downloadOK);
                             $failed[] = $item;
                             $this->commander->isDone($item);
                             $this->removeItem($item, $pending, "OriginalURL");
@@ -243,6 +261,7 @@ class Result {
                     $this->checkSaveWebP($item, $target, $cmds);
                 }
                 catch(ClientException $e) {
+                    $failed[] = $item;
                     $item->Status->Message = $e->getMessage();
                     $this->persist($item, $cmds, 'error');
                     continue;
