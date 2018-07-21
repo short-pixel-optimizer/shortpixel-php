@@ -142,6 +142,9 @@ class Result {
                 }
                 elseif ($item->Status->Code != 2) {
                     $this->removeItem($item, $pending, "OriginalURL");
+                    if($item->Status->Code == -113) {
+                        throw new AccountException("Too many inaccessible URLs from the same domain, please check accessibility and try again.", "-113");
+                    }
                     if($item->Status->Code == -102 || $item->Status->Code == -106) {
                         // -102 is expired, means we need to resend the image through post
                         // -106 is file was not downloaded due to access restrictions - if these are uploaded files it looks like a bug in the API

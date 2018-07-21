@@ -89,7 +89,7 @@ class Source {
             ShortPixel::setOptions(array("base_source_path" => $path));
             return $this->fromFiles($paths->files, null, $paths->filesPending);
         }
-        throw new ClientException("Couldn't find any processable file at given path.", 2);
+        throw new ClientException("Couldn't find any processable file at given path ($path).", 2);
     }
 
     /**
@@ -123,7 +123,7 @@ class Source {
             return $this->fromUrls($items);
         }
         //folder is either empty, either fully optimized, in both cases it's optimized :)
-        throw new ClientException("Couldn't find any processable file at given path.", 2);
+        throw new ClientException("Couldn't find any processable file at given path ($path).", 2);
     }
 
     public function fromBuffer($string) {

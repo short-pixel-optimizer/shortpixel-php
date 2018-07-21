@@ -67,7 +67,7 @@ class TextPersister implements Persister {
      * @return object|void (object)array('status', 'total', 'succeeded', 'pending', 'same', 'failed')
      * @throws PersistException
      */
-    function info($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false, $recurseDepth = PHP_INT_MAX, $retrySkipped = false) {
+    function    info($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false, $recurseDepth = PHP_INT_MAX, $retrySkipped = false) {
         if($persistPath === false) {
             $persistPath = $path;
         }
@@ -120,13 +120,17 @@ class TextPersister implements Persister {
                         $info->total++;
                         if(!isset($dataArr[$file]) || $dataArr[$file]->status == 'pending') {
                             $info->pending++;
+                            $this->logger->log(SPLog::PRODUCER_PERSISTER, "TextPersister->info - PENDING STATUS: $path/$file");
                         }
                         elseif(   $dataArr[$file]->status == 'success' && $this->isChanged($dataArr[$file], $file, $persistPath, $path)
-                               || ($dataArr[$file]->status == 'skip' &&  ($dataArr[$file]->retries <= ShortPixel::MAX_RETRIES || $retrySkipped))) {
+                            // || ($dataArr[$file]->status == 'skip' &&  ($dataArr[$file]->retries <= ShortPixel::MAX_RETRIES || $retrySkipped))) {
+                               || ($dataArr[$file]->status == 'skip' && $retrySkipped)) {
                             //file changed since last optimized, mark it as pending
                             $dataArr[$file]->status = 'pending';
                             if($dataArr[$file]->status == 'skip' && $retrySkipped) {
                                 $dataArr[$file]->retries = 0;
+                            } else {
+                                $this->logger->log(SPLog::PRODUCER_PERSISTER, "TextPersister->info - CHANGED - REVERT TO PENDING: $path/$file");
                             }
                             $this->updateMeta($dataArr[$file], $fp);
                             $info->pending++;
@@ -225,7 +229,7 @@ class TextPersister implements Persister {
                   && (  $dataArr[$file]->status == 'success' && !$this->isChanged($dataArr[$file], $file, $persistPath, $path)
                       || $dataArr[$file]->status == 'skip') ) {
                 if(!isset($dataArr[$file]) || $dataArr[$file]->status !== 'success')
-                $this->logger->logFirst($filePath, SPLog::PRODUCER_PERSISTER, "TextPersister->getTodo - SKIPPING $file - status " . (isset($dataArr[$file]) ? $dataArr[$file]->status : "not processable"));
+                $this->logger->logFirst($filePath, SPLog::PRODUCER_PERSISTER, "TextPersister->getTodo - SKIPPING $path/$file - status " . (isset($dataArr[$file]) ? $dataArr[$file]->status : "not processable"));
                 continue;
             }
             //if retried too many times recently {

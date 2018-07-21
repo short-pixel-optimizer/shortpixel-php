@@ -27,7 +27,7 @@ $processId = uniqid("CLI");
 $options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "resize::", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped", "exclude::", "recurseDepth::", "logLevel::"));
 
 $verbose = isset($options["verbose"]) ? (isset($options["logLevel"]) ? $options["logLevel"] : 0) | SPLog::PRODUCER_CMD_VERBOSE : 0;
-$logger = SPLog::Init($processId, $verbose | SPLog::PRODUCER_CMD);
+$logger = SPLog::Init($processId, $verbose | SPLog::PRODUCER_CMD, SPLog::TARGET_CONSOLE, false, ($verbose ? SPLog::FLAG_MEMORY : SPLog::FLAG_NONE));
 $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "ShortPixel CLI version " . \ShortPixel\ShortPixel::VERSION);
 
 $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "ShortPixel Logging VERBOSE" . ($verbose & SPLog::PRODUCER_PERSISTER ? ", PERSISTER" : "") . ($verbose & SPLog::PRODUCER_CLIENT ? ", CLIENT" : ""));
@@ -148,6 +148,7 @@ try {
 
     $imageCount = $failedImageCount = $sameImageCount = 0;
     $tries = 0;
+    $consecutiveExceptions = 0;
     $folderOptimized = false;
     $targetFolderParam = ($targetFolder !== $folder ? $targetFolder : false);
 
@@ -166,6 +167,8 @@ try {
     }
     else {
         while ($tries < 100000) {
+            $crtImageCount = 0;
+
             try {
                 if ($webPath) {
                     $result = \ShortPixel\fromWebFolder($folder, $webPath, $exclude, $targetFolderParam, $recurseDepth)->wait(300)->toFiles($targetFolder);
@@ -174,17 +177,22 @@ try {
                     $result = \ShortPixel\fromFolder($folder, $speed, $exclude, $targetFolderParam, \ShortPixel\ShortPixel::CLIENT_MAX_BODY_SIZE, $recurseDepth)->wait(300)->toFiles($targetFolder);
                 }
             } catch (\ShortPixel\ClientException $ex) {
-                if ($ex->getCode() == \ShortPixel\ClientException::NO_FILE_FOUND) {
+                if ($ex->getCode() == \ShortPixel\ClientException::NO_FILE_FOUND || $ex->getCode() == 2) {
                     break;
                 } else {
                     $logger->log(SPLog::PRODUCER_CMD, "ClientException: " . $ex->getMessage() . " (CODE: " . $ex->getCode() . ")");
                     $tries++;
+                    if(++$consecutiveExceptions > \ShortPixel\ShortPixel::MAX_RETRIES) {
+                        $logger->log(SPLog::PRODUCER_CMD, "Too many exceptions. Exiting.");
+                        break;
+                    }
+                    $splock->lock();
                     continue;
                 }
             }
             $tries++;
+            $consecutiveExceptions = 0;
 
-            $crtImageCount = 0;
             if (count($result->succeeded) > 0) {
                 $crtImageCount += count($result->succeeded);
                 $imageCount += $crtImageCount;
@@ -198,7 +206,7 @@ try {
                 $crtImageCount += count($result->pending);
             }
             if ($verbose) {
-                $msg = "\nPASS $tries : " . count($result->succeeded) . " succeeded, " . count($result->pending) . " pending, " . count($result->same) . " don't need optimization, " . count($result->failed) . " failed\n";
+                $msg = "\n" . date("Y-m-d H:i:s") . " PASS $tries : " . count($result->succeeded) . " succeeded, " . count($result->pending) . " pending, " . count($result->same) . " don't need optimization, " . count($result->failed) . " failed\n";
                 foreach ($result->succeeded as $item) {
                     $msg .= " - " . $item->SavedFile . " " . $item->Status->Message . " ("
                         . ($item->PercentImprovement > 0 ? "Reduced by " . $item->PercentImprovement . "%" : "") . ($item->PercentImprovement < 5 ? " - Bonus processing" : ""). ")\n";

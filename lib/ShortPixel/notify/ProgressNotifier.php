@@ -50,6 +50,19 @@ abstract class ProgressNotifier {
         $data->sameList = array_slice(array_merge($same, (isset($data->sameList) ? $data->sameList : [])), 0, 20);
         if(!count($data->sameList)) unset($data->sameList);
 
+        $failed = [];
+        if(isset($info->failed)) {
+            $data->failed = (isset($data->failed) ? $data->failed : 0) + (is_array($info->failed) ? count($info->failed) : 0 + $info->failed);
+            if(is_array($info->failed)) {
+                for($i = 0; $i < count($info->failed); $i++) {
+                    $info->failed[$i]->TimeStamp = date("Y-m-d H:i:s");
+                }
+                $failed = $info->failed;
+            }
+        }
+        $data->failedList = array_slice(array_merge($failed, (isset($data->failedList) ? $data->failedList : [])), 0, 100);
+        if(!count($data->failedList)) unset($data->failedList);
+
         $this->setData($data);
     }
 

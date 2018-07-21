@@ -363,14 +363,14 @@ class Client {
     }
 
     function download($sourceURL, $target, $expectedSize = false) {
-        $targetTemp = $target . ".sptemp";
+        $targetTemp = substr($target, 0, 245) . ".sptemp";
         $fp = @fopen ($targetTemp, 'w+');              // open file handle
         if(!$fp) {
             //file cannot be opened, probably no rights or path disappeared
             if(!is_dir(dirname($target))) {
                 throw new ClientException("The file path cannot be found.", -15);
             } else {
-                throw new ClientException("File cannot be updated. Please check rights.", -16);
+                throw new ClientException("Temp file cannot be created inside " . dirname($targetTemp) . ". Please check rights.", -16);
             }
         }
 
@@ -389,7 +389,7 @@ class Client {
         if(!$expectedSize || $expectedSize == $actualSize) {
             if(!@rename($targetTemp, $target)) {
                 @unlink($targetTemp);
-                throw new ClientException("File cannot be updated. Please check rights.", -16);
+                throw new ClientException("File cannot be renamed. Please check rights.", -16);
             }
         } else {
             // ATENTIE!!!!! daca s-a oprit aici e un caz de fisier cu dimensiunea diferita, de verificat

@@ -17,6 +17,9 @@ class SPLog {
     const PRODUCER_CLIENT = 0b00001000;
     const PRODUCER_RESULT = 0b00010000;
 
+    const FLAG_NONE = 0;
+    const FLAG_MEMORY = 1;
+
     const TARGET_CONSOLE = 1;
 
     private static $instance, $dummy;
@@ -27,14 +30,16 @@ class SPLog {
     private $acceptedProducers;
     private $time;
     private $loggedAlready;
+    private $flags;
 
-    private function __construct($processId, $acceptedProducers, $target, $targetName) {
+    private function __construct($processId, $acceptedProducers, $target, $targetName, $flags = self::FLAG_NONE) {
         $this->processId = $processId;
         $this->acceptedProducers = $acceptedProducers;
         $this->target = $target;
         $this->targetName = $targetName;
         $this->time = microtime(true);
         $this->loggedAlready = array();
+        $this->flags = $flags;
     }
 
     /**
@@ -44,10 +49,11 @@ class SPLog {
      * @param $time
      * @return string
      */
-    public static function format($msg, $processId = false, $time = false) {
+    public static function format($msg, $processId = false, $time = false, $flags = self::FLAG_NONE) {
         return "\n" . ($processId ? "$processId@" : "")
                     . date("Y-m-d H:i:s")
-                    . ($time ? " (" . number_format(microtime(true) - $time, 2) . "s)" : "") . " > $msg\n";
+                    . ($time ? " (" . number_format(microtime(true) - $time, 2) . "s)" : "")
+                    . ($flags | self::FLAG_MEMORY ? " (M: " . number_format(memory_get_usage()) . ")" : ""). " > $msg\n";
     }
 
     /**
@@ -59,7 +65,7 @@ class SPLog {
     public function log($producer, $msg, $object = false) {
         if(!($this->acceptedProducers & $producer)) { return; }
 
-        $msgFmt = self::format($msg, $this->processId, $this->time);
+        $msgFmt = self::format($msg, $this->processId, $this->time, $this->flags);
         if($object) {
             $msgFmt .= " " . json_encode($object);
         }
@@ -121,8 +127,8 @@ class SPLog {
      * @param bool|false $targetName the log name if needed
      * @return SPLog the newly created logger instance
      */
-    public static function Init($processId, $acceptedProducers, $target = self::TARGET_CONSOLE, $targetName = false) {
-        self::$instance = new SPLog($processId, $acceptedProducers, $target, $targetName);
+    public static function Init($processId, $acceptedProducers, $target = self::TARGET_CONSOLE, $targetName = false, $flags = SPLog::FLAG_NONE) {
+        self::$instance = new SPLog($processId, $acceptedProducers, $target, $targetName, $flags);
         return self::$instance;
     }
 
