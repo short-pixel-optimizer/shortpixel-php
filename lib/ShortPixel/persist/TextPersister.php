@@ -34,6 +34,10 @@ class TextPersister implements Persister {
         $this->cache = SPCache::Get();
     }
 
+    public static function IGNORED_BY_DEFAULT() {
+        return array('.','..','.shortpixel','.sp-options','.sp-lock','.sp-progress','ShortPixelBackups');
+    }
+
     function isOptimized($path)
     {
         if(!file_exists($path)) {
@@ -56,7 +60,7 @@ class TextPersister implements Persister {
     }
 
     protected function ignored($exclude) {
-        return array_values(array_merge(array('.','..','.','..','.shortpixel','.sp-options','.sp-lock','.sp-progress','ShortPixelBackups'), is_array($exclude) ? $exclude : array()));
+        return array_values(array_merge(self::$IGNORED_BY_DEFAULT, is_array($exclude) ? $exclude : array()));
     }
 
     /**
