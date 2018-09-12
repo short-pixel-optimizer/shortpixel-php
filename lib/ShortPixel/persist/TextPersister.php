@@ -60,7 +60,7 @@ class TextPersister implements Persister {
     }
 
     protected function ignored($exclude) {
-        return array_values(array_merge(self::$IGNORED_BY_DEFAULT, is_array($exclude) ? $exclude : array()));
+        return array_values(array_merge(self::IGNORED_BY_DEFAULT(), is_array($exclude) ? $exclude : array()));
     }
 
     /**
