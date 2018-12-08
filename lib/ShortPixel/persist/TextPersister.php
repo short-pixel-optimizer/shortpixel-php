@@ -246,6 +246,9 @@ class TextPersister implements Persister {
             if(in_array($file, $ignore)) {
                 continue; //and do not log
             }
+            if(!file_exists($filePath)) {
+                continue; // strange but found this for a client..., on windows: HS ID 711715228 
+            }
             if(   (!ShortPixel::isProcessable($file) && !is_dir($filePath))
                 || isset($dataArr[$file]) && $dataArr[$file]->status == 'deleted'
                 || isset($dataArr[$file])

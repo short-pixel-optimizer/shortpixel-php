@@ -139,7 +139,7 @@ class Source {
         if(!is_array($urls)) {
             $urls = array($urls);
         }
-        if(count($urls) > 100) {
+        if(count($urls) > ShortPixel::MAX_API_ALLOWED_FILES_PER_WEB_CALL) {
             throw new ClientException("Maximum 100 images allowed per call.");
         }
 

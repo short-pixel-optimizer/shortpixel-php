@@ -124,6 +124,7 @@ try {
         $webPath = $folderOptions["base_url"];
         $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Using Web Path from settings: $webPath");
     }
+    $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Using OPTIONS: ", $folderOptions);
 
     // ********************* OPTIMIZATION OPTIONS FROM COMMAND LINE TAKE PRECEDENCE *********************
     $overrides = array();

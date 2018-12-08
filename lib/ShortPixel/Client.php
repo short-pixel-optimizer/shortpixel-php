@@ -23,6 +23,10 @@ class Client {
         return self::API_URL() . "/v2/post-reducer.php";
     }
 
+    public static function API_STATUS_ENDPOINT() {
+        return self::API_URL() . "/v2/api-status.php";
+    }
+
     public static function userAgent() {
         $curl = curl_version();
         return "ShortPixel/" . ShortPixel::VERSION . " PHP/" . PHP_VERSION . " curl/" . $curl["version"];
@@ -167,7 +171,10 @@ class Client {
 
         //spdbgd(rawurldecode($body['urllist'][1]), "body");
 
-        for($i = 0; $i < 6; $i++) { //curl_setopt($request, CURLOPT_TIMEOUT, 120);curl_setopt($request, CURLOPT_VERBOSE, true);
+        list($details, $headers, $status, $response) = $this->sendRequest($request,6);
+
+        //TODO delete later
+/*        for($i = 0; $i < 6; $i++) { //curl_setopt($request, CURLOPT_TIMEOUT, 120);curl_setopt($request, CURLOPT_VERBOSE, true);
             $response = curl_exec($request);
             if(!curl_errno($request)) {
                 break;
@@ -195,7 +202,7 @@ class Client {
         $details = json_decode($body);
 
         if (!$details) {
-            $message = sprintf("Error while parsing response: %s (#%d)",
+            $message = sprintf("Error while parsing response (Status: %s): %s (#%d)", $status,
                 PHP_VERSION_ID >= 50500 ? json_last_error_msg() : "Error",
                 json_last_error());
             $details = (object) array(
@@ -205,7 +212,7 @@ class Client {
                 "Status" => (object)array("Code" => -1, "Message" => "ParseError: " . $message)
             );
         }
-
+*/
         if(getenv("SHORTPIXEL_DEBUG")) {
             $info = "DETAILS\n";
             if(is_array($details)) {
@@ -243,9 +250,51 @@ class Client {
         throw Exception::create($details->message, $details->error, $status);
     }
 
+    protected function sendRequest($request, $tries) {
+        for($i = 0; $i < $tries; $i++) { //curl_setopt($request, CURLOPT_TIMEOUT, 120);curl_setopt($request, CURLOPT_VERBOSE, true);
+            $response = curl_exec($request);
+            if(!curl_errno($request)) {
+                break;
+            } else {
+                ShortPixel::log("CURL ERROR: " . curl_error($request) . " (BODY: $response)");
+            }
+        }
+
+        if(curl_errno($request)) {
+            throw new ConnectionException("Error while connecting: " . curl_error($request) . "");
+        }
+        if (!is_string($response)) {
+            $message = sprintf("%s (#%d)", curl_error($request), curl_errno($request));
+            curl_close($request);
+            throw new ConnectionException("Error while connecting: " . $message);
+        }
+
+        $status = curl_getinfo($request, CURLINFO_HTTP_CODE);
+        $headerSize = curl_getinfo($request, CURLINFO_HEADER_SIZE);
+        curl_close($request);
+
+        $headers = self::parseHeaders(substr($response, 0, $headerSize));
+        $body = substr($response, $headerSize);
+
+        $details = json_decode($body);
+
+        if (!$details) {
+            $message = sprintf("Error while parsing response (Status: %s): %s (#%d)", $status,
+                PHP_VERSION_ID >= 50500 ? json_last_error_msg() : "Error",
+                json_last_error());
+            $details = (object) array(
+                "raw" => $body,
+                "error" => "ParseError",
+                "message" => $message . "( " . $body . ")",
+                "Status" => (object)array("Code" => -1, "Message" => "ParseError: " . $message)
+            );
+        }
+        return array($details, $headers, $status, $response);
+    }
+
     protected function prepareJSONRequest($endpoint, $request, $body, $method, $header) {
         //to escape the + from "+webp"
-        if($body["convertto"]) {
+        if(isset($body["convertto"]) && $body["convertto"]) {
             $body["convertto"] = urlencode($body["convertto"]);
         }
 //        if(isset($body["urllist"])) {
@@ -397,5 +446,16 @@ class Client {
             return -$actualSize; //will retry
         }
         return true;
+    }
+
+    function apiStatus($key) {
+        $request = curl_init();
+        curl_setopt_array($request, $this->options);
+        //$this->prepareJSONRequest(self::API_STATUS_ENDPOINT(), $request, array('key' => $key), 'post', array());
+        curl_setopt($request, CURLOPT_URL, self::API_STATUS_ENDPOINT());
+        curl_setopt($request, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt($request, CURLOPT_HTTPHEADER, array());
+        curl_setopt($request, CURLOPT_POSTFIELDS, array('key' => $key));
+        return $this->sendRequest($request, 1);
     }
 }

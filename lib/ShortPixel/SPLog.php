@@ -11,11 +11,11 @@ namespace ShortPixel;
  */
 class SPLog {
     const PRODUCER_NONE = 0;
-    const PRODUCER_CMD = 0b00000001;
-    const PRODUCER_CMD_VERBOSE = 0b00000010;
-    const PRODUCER_PERSISTER = 0b00000100;
-    const PRODUCER_CLIENT = 0b00001000;
-    const PRODUCER_RESULT = 0b00010000;
+    const PRODUCER_CMD = 1;         //0b00000001;
+    const PRODUCER_CMD_VERBOSE = 2; //0b00000010;
+    const PRODUCER_PERSISTER = 4;   //0b00000100;
+    const PRODUCER_CLIENT = 8;      //0b00001000;
+    const PRODUCER_RESULT = 16;     //0b00010000;
 
     const FLAG_NONE = 0;
     const FLAG_MEMORY = 1;
