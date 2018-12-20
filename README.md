@@ -96,6 +96,9 @@ while(!$stop) {
     }
 }
 
+//Get account status and credits info:
+$ret = \ShortPixel\ShortPixel::getClient()->apiStatus(YOUR_API_KEY);
+
 ```
 There are more code examples in the [examples/integration.php](https://github.com/short-pixel-optimizer/shortpixel-php/blob/master/examples/integration.php ) file.
 
