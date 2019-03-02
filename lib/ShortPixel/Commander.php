@@ -116,7 +116,7 @@ class Commander {
             }
             for($i = 0; $i < 6; $i++) {
                 $return = $this->execute(true);
-                if(!isset($return->body->Status->Code) || !in_array($return->body->Status->Code, [-305, -404, -500])) {
+                if(!isset($return->body->Status->Code) || !in_array($return->body->Status->Code, array(-305, -404, -500))) {
                     break;
                 }
                 // error -404: The maximum number of URLs in the optimization queue reached, wait a bit and retry.
