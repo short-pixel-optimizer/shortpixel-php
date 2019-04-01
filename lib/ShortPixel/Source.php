@@ -126,8 +126,13 @@ class Source {
         throw new ClientException("Couldn't find any processable file at given path ($path).", 2);
     }
 
-    public function fromBuffer($string) {
-        throw new ClientException("fromBuffer not implemented");
+    public function fromBuffer($name, $contents) {
+        return new Commander(array(
+            "plugin_version" => ShortPixel::LIBRARY_CODE . " " . ShortPixel::VERSION,
+            "key" =>  ShortPixel::getKey(),
+            "buffers" => array($name => $contents),
+            // don't add it if false, otherwise will overwrite the refresh command //"refresh" => false
+        ), $this);
     }
 
     /**

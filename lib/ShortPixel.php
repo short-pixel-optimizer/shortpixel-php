@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.5.3";
+    const VERSION = "1.5.5";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -247,9 +247,9 @@ function fromWebFolder($path, $webPath, $exclude = array(), $persistFolder = fal
     return $source->fromWebFolder($path, $webPath, $exclude, $persistFolder, $recurseDepth);
 }
 
-function fromBuffer($string) {
+function fromBuffer($name, $contents) {
     $source = new Source();
-    return $source->fromBuffer($string);
+    return $source->fromBuffer($name, $contents);
 }
 
 /**

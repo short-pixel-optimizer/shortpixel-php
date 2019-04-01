@@ -29,7 +29,7 @@ use \ShortPixel\SPLog;
 
 $processId = uniqid("CLI");
 
-$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "resize::", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped",
+$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "resize::", "createWebP", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped",
                             "exclude::", "recurseDepth::", "logLevel::", "cacheTime::"));
 
 $verbose = isset($options["verbose"]) ? (isset($options["logLevel"]) ? $options["logLevel"] : 0) | SPLog::PRODUCER_CMD_VERBOSE : 0;
@@ -44,6 +44,7 @@ $targetFolder = isset($options["targetFolder"]) ? verifyFolder($options["targetF
 $webPath = isset($options["webPath"]) ? filter_var($options["webPath"], FILTER_VALIDATE_URL) : false;
 $compression = isset($options["compression"]) ? intval($options["compression"]) : false;
 $resizeRaw =  isset($options["resize"]) ? $options["resize"] : false;
+$createWebP = isset($options["createWebP"]);
 $speed = isset($options["speed"]) ? intval($options["speed"]) : false;
 $bkBase = isset($options["backupBase"]) ? verifyFolder($options["backupBase"]) : false;
 $clearLock = isset($options["clearLock"]);
@@ -120,11 +121,14 @@ try {
     //try to get optimization options from the folder .sp-options
     $optionsHandler = new \ShortPixel\Settings();
     $folderOptions = $optionsHandler->readOptions($targetFolder);
+    if(count($folderOptions)) {
+        $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Options from .sp-options file: ", $folderOptions);
+    }
+
     if((!isset($webPath) || !$webPath) && isset($folderOptions["base_url"]) && strlen($folderOptions["base_url"])) {
         $webPath = $folderOptions["base_url"];
         $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Using Web Path from settings: $webPath");
     }
-    $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Using OPTIONS: ", $folderOptions);
 
     // ********************* OPTIMIZATION OPTIONS FROM COMMAND LINE TAKE PRECEDENCE *********************
     $overrides = array();
@@ -145,6 +149,9 @@ try {
             $logger->bye(SPLog::PRODUCER_CMD, "Malformed parameter --resize, should be --resize=[width]x[height]/[type] type being 1 for outer and 3 for inner");
         }
     }
+    if($createWebP !== false) {
+        $overrides['convertto'] = '+webp';
+    }
 
     if($bkFolderRel) {
         $overrides['backup_path'] = $bkFolderRel;
@@ -152,7 +159,9 @@ try {
     if(!count($exclude) && isset($folderOptions["exclude"]) && strlen($folderOptions["exclude"])) {
         $exclude = $folderOptions["exclude"];
     }
-    \ShortPixel\ShortPixel::setOptions(array_merge($folderOptions, $overrides, array("persist_type" => "text", "notify_progress" => true, "cache_time" => $cacheTime)));
+    $optimizationOptions = array_merge($folderOptions, $overrides, array("persist_type" => "text", "notify_progress" => true, "cache_time" => $cacheTime));
+    $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Using OPTIONS: ", $optimizationOptions);
+    \ShortPixel\ShortPixel::setOptions($optimizationOptions);
 
     $imageCount = $failedImageCount = $sameImageCount = 0;
     $tries = 0;
