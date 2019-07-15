@@ -9,6 +9,7 @@
  *   - add --backupBase=/full/path/to/your/backup/basedir
  *   - add --targetFolder to specify a different destination for the optimized files.
  *   - add --webPath=http://yoursites.address/img/folder/ to map the folder to a web URL and have our servers download the images instead of posting them (less heavy on memory for large files)
+ *   - add --keepExif to keep the EXIF data
  *   - add --speeed=x x between 1 and 10 - default is 10 but if you have large images it will eat up a lot of memory when creating the post messages so sometimes you might need to lower it. Not needed when using the webPath mapping.
  *   - add --verbose parameter for more info during optimization
  *   - add --clearLock to clear a lock that's already placed on the folder. BE SURE you know what you're doing, files might get corrupted if the previous script is still running. The locks expire in 6 min. anyway.
@@ -29,7 +30,7 @@ use \ShortPixel\SPLog;
 
 $processId = uniqid("CLI");
 
-$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "resize::", "createWebP", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped",
+$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "resize::", "createWebP", "keepExif", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped",
                             "exclude::", "recurseDepth::", "logLevel::", "cacheTime::"));
 
 $verbose = isset($options["verbose"]) ? (isset($options["logLevel"]) ? $options["logLevel"] : 0) | SPLog::PRODUCER_CMD_VERBOSE : 0;
@@ -45,6 +46,7 @@ $webPath = isset($options["webPath"]) ? filter_var($options["webPath"], FILTER_V
 $compression = isset($options["compression"]) ? intval($options["compression"]) : false;
 $resizeRaw =  isset($options["resize"]) ? $options["resize"] : false;
 $createWebP = isset($options["createWebP"]);
+$keepExif = isset($options["keepExif"]);
 $speed = isset($options["speed"]) ? intval($options["speed"]) : false;
 $bkBase = isset($options["backupBase"]) ? verifyFolder($options["backupBase"]) : false;
 $clearLock = isset($options["clearLock"]);
@@ -151,6 +153,9 @@ try {
     }
     if($createWebP !== false) {
         $overrides['convertto'] = '+webp';
+    }
+    if($keepExif !== false) {
+        $overrides['keep_exif'] = 1;
     }
 
     if($bkFolderRel) {
