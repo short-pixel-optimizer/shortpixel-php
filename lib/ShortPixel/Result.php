@@ -29,7 +29,7 @@ class Result {
 
     /**
      * @param null $path - path to save the file to
-     * @param null $fileName - filename of the saved file
+     * @param null $fileName - filename of the saved file. If it's an array, then one entry for each optimized file, in the same order.
      * @param null $bkPath - the path to save a backup of the original file
      * @return object containig lists with succeeded, pending, failed and same items (same means the image did not need optimization)
      * @throws AccountException
@@ -114,7 +114,23 @@ class Result {
                     $targetPath .= '/' . $relativePath;
                 }
 
-                $fn = ($fileName ? $fileName . ($i > 0 ? "_" . $i : "") : $origFileName);
+                if($fileName) {
+                    if(is_array($fileName)) {
+                        if(!isset($fileName[$i])) {
+                            throw new ClientException('Names array contains less names than the files sent to optimization');
+                        }
+                        $fn = $fileName[$i];
+                    } else {
+                        if($i > 0) {
+                            $dotExt = '.' . pathinfo($fileName, PATHINFO_EXTENSION);
+                            $fn = basename($fileName, $dotExt) . "_" . $i . $dotExt;
+                        } else {
+                            $fn = $fileName;
+                        }
+                    }
+                } else {
+                    $fn = $origFileName;
+                }
                 $target = $targetPath . '/' . $fn;
 
                 if($originalPath) {

@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.5.6";
+    const VERSION = "1.6.0";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -49,6 +49,7 @@ class ShortPixel {
         //"persist_pass" => "pass" // only for mysql
         // "" => null,
     );
+    private static $curlOptions = array();
 
     public static $PROCESSABLE_EXTENSIONS = array('jpg', 'jpeg', 'jpe', 'jfif', 'jif', 'gif', 'png', 'pdf');
 
@@ -78,6 +79,15 @@ class ShortPixel {
      */
     public static function setOptions($options) {
         self::$options = array_merge(self::$options, $options);
+    }
+
+    /**
+     * add custom cURL options. These provided options will take precedence to the default options that are passed to all cURL calls but not to others that are specific to each call (CURLOPT_TIMEOUT, CURLOPT_CUSTOMREQUEST)
+     * or to library's user agent.
+     * @param array $curlOptions Key-value pairs
+     */
+    public static function setCurlOptions($curlOptions) {
+        self::$curlOptions = $curlOptions + self::$curlOptions;
     }
 
     /**
@@ -112,7 +122,7 @@ class ShortPixel {
         }
 
         if (!self::$client) {
-            self::$client = new Client();
+            self::$client = new Client(self::$curlOptions);
         }
 
         return self::$client;
@@ -174,6 +184,14 @@ function setKey($key) {
  */
 function setOptions($options) {
     return ShortPixel::setOptions($options);
+}
+
+/**
+ * stub for ShortPixel::setOptions()
+ * @return the current options array
+ */
+function setCurlOptions($options) {
+    return ShortPixel::setCurlOptions($options);
 }
 
 /**

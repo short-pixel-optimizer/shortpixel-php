@@ -44,8 +44,8 @@ class Client {
         return dirname(__DIR__) . "/data/shortpixel.crt";
     }
 
-    function __construct() {
-        $this->options = array(
+    function __construct($curlOptions) {
+        $this->options = $curlOptions + array(
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_BINARYTRANSFER => true,
             CURLOPT_HEADER => true,
