@@ -5,7 +5,7 @@ namespace ShortPixel;
 
 class Client {
 
-    private $options;
+    private $options, $customOptions;
     public static function API_DOMAIN() {
         return "api.shortpixel.com";
         //* DEVELOPMENT !! */ return "devapi.shortpixel.com";
@@ -45,6 +45,7 @@ class Client {
     }
 
     function __construct($curlOptions) {
+        $this->customOptions = $curlOptions;
         $this->options = $curlOptions + array(
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_BINARYTRANSFER => true,
@@ -450,6 +451,7 @@ class Client {
 
         $ch = curl_init($sourceURL);
         // curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // enable if you want
+        curl_setopt_array($ch, $this->customOptions);
         curl_setopt($ch, CURLOPT_FILE, $fp);          // output to file
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false); //previously 1. Changed it because it conflicts with some clients open_basedir (php.ini) settings (https://secure.helpscout.net/conversation/859529984/16086?folderId=1117588)
         curl_setopt($ch, CURLOPT_TIMEOUT, 10000);      // some large value to allow curl to run for a long time
