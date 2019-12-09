@@ -191,7 +191,7 @@ class Result {
                     continue;
                 }
                 //IF file is locally accessible, the source file size should be the same as the size downloaded by (or posted to) ShortPixel servers
-                elseif(file_exists($originalPath) && filesize($originalPath) != $item->OriginalSize) {
+                elseif(clearstatcache(true, $originalPath) || file_exists($originalPath) && filesize($originalPath) != $item->OriginalSize) {
                     $item->Status->Code = -110;
                     $item->Status->Message = "Wrong original size. Expected (local source file): " . filesize($originalPath) . " downloaded by ShortPixel: " . $item->OriginalSize;
                     $status = $this->persist($item, $cmds, 'error');
@@ -207,6 +207,7 @@ class Result {
                 elseif($item->PercentImprovement == 0) {
                     //sometimes the percent is 0 and the size is different (by some octets) so put the correct size in place
                     if(file_exists($originalPath)) {
+                        clearstatcache(true, $originalPath);
                         if($cmds["lossy"] > 0) {
                             $item->LossySize = filesize($originalPath);
                         } else {
@@ -316,8 +317,11 @@ class Result {
             }
         }
 
+        $message = ShortPixel::opt('persist_type') == 'text' ? 'pending' : ($pending ? 'pending' : ($failed ? 'error' : 'success'));
         $ret = (object) array(
-            'status' => array('code' => 1, 'message' => 'pending'),
+            'status' => array(
+                'code' => $message = 'success' ? 2 : 1,
+                'message' => $message),
             'succeeded' => $succeeded,
             'pending' => $pending,
             'failed' => $failed,
