@@ -320,7 +320,7 @@ class Result {
         $message = ShortPixel::opt('persist_type') == 'text' ? 'pending' : ($pending ? 'pending' : ($failed ? 'error' : 'success'));
         $ret = (object) array(
             'status' => array(
-                'code' => $message = 'success' ? 2 : 1,
+                'code' => ($message == 'success' ? 2 : 1),
                 'message' => $message),
             'succeeded' => $succeeded,
             'pending' => $pending,
