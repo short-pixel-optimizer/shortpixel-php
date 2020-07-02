@@ -67,9 +67,11 @@ class Client {
      * @throws ConnectionException
      */
     function request($method, $body = NULL, $header = array()){
-        foreach($body as $key => $val) {
-            if($val === null) {
-                unset($body[$key]);
+        if ($body) {
+            foreach($body as $key => $val) {
+                if($val === null) {
+                    unset($body[$key]);
+                }
             }
         }
 
