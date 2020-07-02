@@ -298,6 +298,7 @@ class Client {
                 "message" => $message . "( " . $body . ")",
                 "Status" => (object)array("Code" => -1, "Message" => "ParseError: " . $message)
             );
+            ShortPixel::log("JSON Error while parsing response: " . json_encode($details));
         }
         return array($details, $headers, $status, $response);
     }

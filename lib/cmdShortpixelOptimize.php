@@ -122,7 +122,9 @@ try {
 
     //try to get optimization options from the folder .sp-options
     $optionsHandler = new \ShortPixel\Settings();
-    $folderOptions = $optionsHandler->readOptions($targetFolder);
+    $sourceOptions = $optionsHandler->readOptions($folder);
+    $targetOptions = $optionsHandler->readOptions($targetFolder);
+    $folderOptions = array_merge(is_array($sourceOptions) ? $sourceOptions : [], is_array($targetOptions) ? $targetOptions : []);
     if(count($folderOptions)) {
         $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Options from .sp-options file: ", $folderOptions);
     }
