@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.6.4";
+    const VERSION = "1.7.0";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -28,7 +28,7 @@ class ShortPixel {
         "resize_width" => null, // in pixels. null means no resize
         "resize_height" => null, // in pixels. null means no resize
         "cmyk2rgb" => 1, // convert CMYK to RGB: 1 yes, 0 no
-        "convertto" => "", // if '+webp' then also the WebP version will be generated
+        "convertto" => "", // if '+webp' then also the WebP version will be generated, if +avif then also the AVIF version will be generated. Specify both with +webp|+avif
         "user" => "", //set the user needed for HTTP AUTH of the base_url
         "pass" => "", //se the pass needed for HTTP AUTH of the base_url
         // **** return options ****
@@ -70,7 +70,8 @@ class ShortPixel {
         "resize_width" => null, // in pixels. null means no resize
         "resize_height" => null,
         "cmyk2rgb" => 1,
-        "notify_me" => null, // should contain full URL of of notification script (notify.php)
+        "convertto" => "", // if '+webp' then also the WebP version will be generated, if +avif then also the AVIF version will be generated. Specify both with +webp|+avif
+        "notify_me" => null, // should contain full URL of of notification script (notify.php)- TO BE IMPLEMENTED
         "wait" => 30,
         //local options
         "total_wait" => 30,

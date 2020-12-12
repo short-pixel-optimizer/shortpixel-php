@@ -144,7 +144,9 @@ class Result {
                 if(    $item->Status->Code == 2
                     && (   $item->LossySize == 0  && $item->LoselessSize == 0
                         || $item->WebPLossyURL != 'NA' && ($item->WebPLossySize == 'NA' || !$item->WebPLossySize )
-                        || $item->WebPLosslessURL != 'NA' && ($item->WebPLoselessSize == 'NA' || !$item->WebPLoselessSize))) {
+                        || $item->WebPLosslessURL != 'NA' && ($item->WebPLosslessSize == 'NA' || !$item->WebPLosslessSize)
+                        || $item->AVIFLossyURL != 'NA' && ($item->AVIFLossySize == 'NA' || !$item->AVIFLossySize )
+                        || $item->AVIFLosslessURL != 'NA' && ($item->AVIFLosslessSize == 'NA' || !$item->AVIFLosslessSize))) {
                     $item->Status->Code = 1;
                 }
 
@@ -219,6 +221,7 @@ class Result {
                         }
                     }
                     $this->checkSaveWebP($item, $target, $cmds);
+                    $this->checkSaveAVIF($item, $target, $cmds);
                     $same[] = $item;
                     $this->removeItem($item, $pending, "OriginalURL");
                     $this->persist($item, $cmds);
@@ -285,6 +288,7 @@ class Result {
                         continue;
                     }
                     $this->checkSaveWebP($item, $target, $cmds);
+                    $this->checkSaveAVIF($item, $target, $cmds);
                 }
                 catch(ClientException $e) {
                     $failed[] = $item;
@@ -345,6 +349,16 @@ class Result {
             $optWebPURL = $cmds["lossy"] > 0 ? $item->WebPLossyURL : $item->WebPLosslessURL;
             ShortPixel::getClient()->download($optWebPURL, $webpTarget);
             $item->WebPSavedFile = $webpTarget;
+        }
+    }
+
+    private function checkSaveAVIF($item, $target, $cmds)
+    {
+        if (isset($item->AVIFLossyURL) && $item->AVIFLossyURL !== 'NA') { //an AVIF image was generated as per the options, download and save it too
+            $avifTarget = $targetAVIFFile = dirname($target) . '/' . MB_basename($target, '.' . pathinfo($target, PATHINFO_EXTENSION)) . ".avif";
+            $optAVIFURL = $cmds["lossy"] > 0 ? $item->AVIFLossyURL : $item->AVIFLosslessURL;
+            ShortPixel::getClient()->download($optAVIFURL, $avifTarget);
+            $item->AVIFSavedFile = $avifTarget;
         }
     }
 

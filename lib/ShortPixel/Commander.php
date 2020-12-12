@@ -54,12 +54,27 @@ class Commander {
         return $this;
     }
 
+    
+
     /**
-     * @param bool|true $keep
+     * @param bool|true $generate - default true, meaning generates WebP.
      * @return $this
      */
     public function generateWebP($generate = true) {
-        $this->commands = array_merge($this->commands, array("convertto" => $generate ? "+webp" : ''));
+        $convertto = isset($this->commands['convertto']) ? explode('|', $this->commands['convertto']) : array();
+        $convertto[] = '+webp';
+        $this->commands = array_merge($this->commands, array("convertto" => implode('|', array_unique($convertto))));
+        return $this;
+    }
+
+    /**
+     * @param bool|true $generate - default true, meaning generates WebP.
+     * @return $this
+     */
+    public function generateAVIF($generate = true) {
+        $convertto = isset($this->commands['convertto']) ? explode('|', $this->commands['convertto']) : array();
+        $convertto[] = '+avif';
+        $this->commands = array_merge($this->commands, array("convertto" => implode('|', array_unique($convertto))));
         return $this;
     }
 

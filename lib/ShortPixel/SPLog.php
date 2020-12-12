@@ -60,8 +60,8 @@ class SPLog {
 
     /**
      * Log the message if the logger is configured to log from this producer
-     * @param $producer the source of logging ( one of the SPLog::PRODUCER_* values )
-     * @param $msg the actual message
+     * @param $producer SPLog::PRODUCER_* - the source of logging ( one of the SPLog::PRODUCER_* values )
+     * @param $msg $string the actual message
      * @param bool $object
      */
     public function log($producer, $msg, $object = false) {

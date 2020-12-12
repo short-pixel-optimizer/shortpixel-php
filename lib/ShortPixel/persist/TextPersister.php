@@ -7,7 +7,10 @@
 namespace ShortPixel\persist;
 
 use ShortPixel\ClientException;
+use ShortPixel\Lock;
+use ShortPixel\notify\ProgressNotifierFileQ;
 use \ShortPixel\Persister;
+use ShortPixel\Settings;
 use \ShortPixel\ShortPixel;
 use \ShortPixel\Client;
 use \ShortPixel\SPCache;
@@ -26,6 +29,12 @@ class TextPersister implements Persister {
     private STATIC $ALLOWED_STATUSES = array('pending', 'success', 'skip', 'deleted');
     private STATIC $ALLOWED_TYPES = array('I', 'D');
 
+    const FLAG_WEBP = 2;//second bit set like in "10"
+    const FLAG_AVIF = 32;//6th bit set like in "100000"
+
+    const LINE_LENGTH = 465; //including the \r\n at the end
+    const LINE_LENGTH_V2 = 610; //including the \r\n at the end - NOT YET USED
+
     function __construct($options)
     {
         $this->options = $options;
@@ -35,7 +44,7 @@ class TextPersister implements Persister {
     }
 
     public static function IGNORED_BY_DEFAULT() {
-        return array('.','..','.shortpixel','.sp-options','.sp-lock','.sp-progress','ShortPixelBackups');
+        return array('.','..',ShortPixel::opt('persist_name'),Settings::FOLDER_INI_NAME,Lock::FOLDER_LOCK_FILE,ProgressNotifierFileQ::PROGRESS_FILE_NAME,'ShortPixelBackups');
     }
 
     function isOptimized($path)
@@ -499,6 +508,9 @@ class TextPersister implements Persister {
         fseek($fp, 0);
         for ($i = 0; ($line = fgets($fp)) !== FALSE; $i++) {
             $data = $this->parse($line);
+            if(!property_exists($data, 'file')) {
+                die(var_dump($line));
+            }
             if($data->file === \ShortPixel\MB_basename($path)) {
                 $data->filePos = $i;
                 return $data;
@@ -565,13 +577,22 @@ class TextPersister implements Persister {
             "originalSize" => is_dir($file) || !file_exists($file) ? 0 : filesize($file));
     }
 
-    const LINE_LENGTH = 465; //including the \r\n at the end
-
     protected function parse($line) {
         if(strlen(rtrim($line, "\r\n")) != (self::LINE_LENGTH - 2)) return false;
         $percent = trim(substr($line, 52, 6));
         $optimizedSize = trim(substr($line, 58, 9));
         $originalSize = trim(substr($line, 454, 9));
+
+        $convertto = trim(substr($line, 42, 10));
+        if(is_numeric($convertto)) {
+            //convert to string representation
+            $conv = [];
+            if($convertto | self::FLAG_WEBP) $conv[] = '+webp';
+            if($convertto | self::FLAG_AVIF) $conv[] = '+avif';
+            $convertto = implode('|', $conv);
+            $this->logger->log(SPLog::PRODUCER_PERSISTER, "Convertto $convertto");
+        }
+
         $ret = (object) array(
             "type" => trim(substr($line, 0, 2)),
             "status" => trim(substr($line, 2, 11)),
@@ -582,7 +603,7 @@ class TextPersister implements Persister {
             "resize" => trim(substr($line, 28, 2)),
             "resizeWidth" => trim(substr($line, 30, 6)),
             "resizeHeight" => trim(substr($line, 36, 6)),
-            "convertto" => trim(substr($line, 42, 10)),
+            "convertto" => $convertto,
             "percent" => is_numeric($percent) ? floatval($percent) : 0.0,
             "optimizedSize" => is_numeric($optimizedSize) ? intval($optimizedSize) : 0,
             "changeDate" => strtotime(trim(substr($line, 67, 20))),
@@ -597,6 +618,10 @@ class TextPersister implements Persister {
     }
 
     protected function assemble($data) {
+        $convertto = 1;
+        if(strpos($data->convertto, '+webp') !== false) $convertto |= self::FLAG_WEBP;
+        if(strpos($data->convertto, '+avif') !== false) $convertto |= self::FLAG_AVIF;
+
         return sprintf("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
             str_pad($data->type, 2),
             str_pad($data->status, 11),
@@ -607,7 +632,7 @@ class TextPersister implements Persister {
             str_pad($data->resize, 2),
             str_pad(substr($data->resizeWidth, 0 , 5), 6),
             str_pad(substr($data->resizeHeight, 0 , 5), 6),
-            str_pad($data->convertto, 10),
+            str_pad($convertto, 10),
             str_pad(substr(number_format($data->percent, 2, ".",""),0 , 5), 6),
             str_pad(substr(number_format($data->optimizedSize, 0, ".", ""),0 , 8), 9),
             str_pad(date("Y-m-d H:i:s", $data->changeDate), 20),

@@ -30,7 +30,7 @@ use \ShortPixel\SPLog;
 
 $processId = uniqid("CLI");
 
-$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "resize::", "createWebP", "keepExif", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped",
+$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "resize::", "createWebP", "createAVIF", "keepExif", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped",
                             "exclude::", "recurseDepth::", "logLevel::", "cacheTime::"));
 
 $verbose = isset($options["verbose"]) ? (isset($options["logLevel"]) ? $options["logLevel"] : 0) | SPLog::PRODUCER_CMD_VERBOSE : 0;
@@ -46,6 +46,7 @@ $webPath = isset($options["webPath"]) ? filter_var($options["webPath"], FILTER_V
 $compression = isset($options["compression"]) ? intval($options["compression"]) : false;
 $resizeRaw =  isset($options["resize"]) ? $options["resize"] : false;
 $createWebP = isset($options["createWebP"]);
+$createAVIF = isset($options["createAVIF"]);
 $keepExif = isset($options["keepExif"]);
 $speed = isset($options["speed"]) ? intval($options["speed"]) : false;
 $bkBase = isset($options["backupBase"]) ? verifyFolder($options["backupBase"]) : false;
@@ -155,6 +156,9 @@ try {
     }
     if($createWebP !== false) {
         $overrides['convertto'] = '+webp';
+    }
+    if($createAVIF !== false) {
+        $overrides['convertto'] = (strlen($overrides['convertto']) ? $overrides['convertto'] . '|' : '') . '+avif';
     }
     if($keepExif !== false) {
         $overrides['keep_exif'] = 1;
