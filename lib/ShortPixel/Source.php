@@ -115,7 +115,7 @@ class Source {
         }
         $paths = $persister->getTodo($path, ShortPixel::MAX_ALLOWED_FILES_PER_WEB_CALL, $exclude, $persistFolder, $recurseDepth);
         $repl = (object)array("path" => $path, "web" => $webPath);
-        if(count($paths->files)) {
+        if($paths && count($paths->files)) {
             $items = array_merge($paths->files, array_values($paths->filesPending)); //not impossible to have filesPending - for example optimized partially without webPath then added it
             array_walk(
                 $items,
