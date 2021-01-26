@@ -82,7 +82,7 @@ class Source {
 
         $persister = ShortPixel::getPersister($path);
         if(!$persister) {
-            throw new PersistException("Persist is not enabled in options, needed for folder optimization");
+            throw new PersistException("Persist_type is not enabled in options, needed for folder optimization");
         }
         $paths = $persister->getTodo($path, $maxFiles, $exclude, $persistFolder, $maxTotalFileSize, $recurseDepth);
         if($paths) {
@@ -108,7 +108,12 @@ class Source {
 
         $path = rtrim($path, '/');
         $webPath = rtrim($webPath, '/');
-        $paths = ShortPixel::getPersister()->getTodo($path, ShortPixel::MAX_ALLOWED_FILES_PER_WEB_CALL, $exclude, $persistFolder, $recurseDepth);
+        $persister = ShortPixel::getPersister();
+        if($persister === null) {
+            //cannot optimize from folder without persister.
+            throw new PersistException("Persist_type is not enabled in options, needed for folder optimization");
+        }
+        $paths = $persister->getTodo($path, ShortPixel::MAX_ALLOWED_FILES_PER_WEB_CALL, $exclude, $persistFolder, $recurseDepth);
         $repl = (object)array("path" => $path, "web" => $webPath);
         if(count($paths->files)) {
             $items = array_merge($paths->files, array_values($paths->filesPending)); //not impossible to have filesPending - for example optimized partially without webPath then added it
