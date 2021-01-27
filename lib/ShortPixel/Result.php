@@ -8,11 +8,12 @@ use ShortPixel\notify\ProgressNotifier;
  * @package ShortPixel
  */
 class Result {
-    protected $commander, $ctx;
+    protected $commander, $ctx, $logger;
 
     public function __construct($commander, $context) {
         $this->commander = $commander;
         $this->ctx = $context;
+        $this->logger = SPLog::Get(SPLog::PRODUCER_RESULT);
     }
 
     /**
@@ -73,10 +74,12 @@ class Result {
             foreach($items as $item) {
 
                 $targetPath = $path; $originalPath = $baseUrl = false;
+                $this->logger->log(SPLog::PRODUCER_RESULT, "RESULT toFiles while CTX:", $this->ctx->fileMappings);
 
                 if($this->ctx->fileMappings && count($this->ctx->fileMappings)) { // it was optimized from a local file, fileMappings contains the mappings from the local files to the internal ShortPixel URLs
                     $originalPath = isset($this->ctx->fileMappings[$item->OriginalURL]) ? $this->ctx->fileMappings[$item->OriginalURL] : false;
                     //
+                    $this->logger->log(SPLog::PRODUCER_RESULT, "ORIGINAL PATH:" . $originalPath);
                     if(ShortPixel::opt("base_source_path") && $originalPath) {
                         $origPathParts = explode('/', str_replace(ShortPixel::opt("base_source_path"). "/", "", $originalPath));
                         $origFileName = $origPathParts[count($origPathParts) - 1];
@@ -90,7 +93,7 @@ class Result {
                         $origFileName = $item->OriginalFileName;
                         $relativePath = "";
                     } else {
-                        throw new ClientException("Cannot determine a filename to save to.");
+                        throw new ClientException("Cannot determine a filename to save to." . $item->OriginalURL . " CTX: " . json_encode($this->ctx->fileMappings));
                     }
                 } elseif(isset($item->OriginalURL)) {  // it was optimized from a URL
                     $baseUrl = ShortPixel::opt("base_url");
@@ -159,7 +162,7 @@ class Result {
                     } else {
                         $pending[$found]->Retries += 1;
                     }
-
+                    $this->logger->log(SPLog::PRODUCER_RESULT, "PENDING, RETRIES:", $pending[$found]->Retries);
                     continue;
                 }
                 elseif ($item->Status->Code != 2) {
@@ -190,6 +193,7 @@ class Result {
                         $this->commander->isDone($item);
                         $this->removeItem($item, $pending, "OriginalURL");
                     }
+                    $this->logger->log(SPLog::PRODUCER_RESULT, "FAILED WITH CODE:", $item->Status->Code);
                     continue;
                 }
                 //IF file is locally accessible, the source file size should be the same as the size downloaded by (or posted to) ShortPixel servers
@@ -204,6 +208,7 @@ class Result {
                         $this->commander->isDone($item);
                         $this->removeItem($item, $pending, "OriginalURL");
                     }
+                    $this->logger->log(SPLog::PRODUCER_RESULT, "ERROR:", $item->Status->Message);
                     continue;
                 }
                 elseif($item->PercentImprovement == 0) {
@@ -226,6 +231,7 @@ class Result {
                     $this->removeItem($item, $pending, "OriginalURL");
                     $this->persist($item, $cmds);
                     $this->commander->isDone($item);
+                    $this->logger->log(SPLog::PRODUCER_RESULT, "IMPROVEMENT 0");
                     continue;
                 }
 
@@ -285,6 +291,7 @@ class Result {
                             $this->commander->isDone($item);
                             $this->removeItem($item, $pending, "OriginalURL");
                         }
+                        $this->logger->log(SPLog::PRODUCER_RESULT, "DOWNLOAD NOK? " . $downloadOK . " URL: " . $optURL, $item->Status->Message);
                         continue;
                     }
                     $this->checkSaveWebP($item, $target, $cmds);
@@ -294,6 +301,7 @@ class Result {
                     $failed[] = $item;
                     $item->Status->Message = $e->getMessage();
                     $this->persist($item, $cmds, 'error');
+                    $this->logger->log(SPLog::PRODUCER_RESULT, "CLIENT EXCEPTION:", $e->getMessage());
                     continue;
                 }
 
@@ -314,6 +322,7 @@ class Result {
                         $pend = false;
                     }
                 }
+                $this->logger->log(SPLog::PRODUCER_RESULT, "RELAUNCH");
                 $this->ctx = $this->commander->relaunch((object)array("body" => $pending, "headers" => $this->ctx->headers, "fileMappings" => $this->ctx->fileMappings));
             } else {
                 break;

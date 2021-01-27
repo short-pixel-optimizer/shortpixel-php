@@ -17,6 +17,7 @@ class SPLog {
     const PRODUCER_CLIENT = 8;      //0b00001000;
     const PRODUCER_RESULT = 16;     //0b00010000;
     const PRODUCER_WEB = 32;        //0b00100000;
+    const PRODUCER_CTRL = 64;       //0b01000000;
 
     const FLAG_NONE = 0;
     const FLAG_MEMORY = 1;

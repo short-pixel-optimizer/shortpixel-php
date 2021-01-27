@@ -12,11 +12,12 @@ namespace ShortPixel;
  * @package ShortPixel
  */
 class Commander {
-    private $data, $source, $commands;
+    private $data, $source, $commands, $logger;
 
     public function __construct($data, Source $source) {
         $this->source = $source;
         $this->data = $data;
+        $this->logger = SPLog::Get(SPLog::PRODUCER_CTRL);
         //$options = ShortPixel::options();
         $this->commands = array();//('lossy' => 0 + $options["lossy"]);
         if(isset($data['refresh']) && $data['refresh']) {
@@ -132,6 +133,7 @@ class Commander {
             }
             for($i = 0; $i < 6; $i++) {
                 $return = $this->execute(true);
+                $this->logger->log(SPLog::PRODUCER_CTRL, "EXECUTE RETURNED: ", $return);
                 if(!isset($return->body->Status->Code) || !in_array($return->body->Status->Code, array(-305, -404, -500))) {
                     break;
                 }
