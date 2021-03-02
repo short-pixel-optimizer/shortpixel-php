@@ -475,6 +475,10 @@ class Client {
                 throw new ClientException("File cannot be renamed. Please check rights.", -16);
             }
         } else {
+            $meta = ($actualSize < 200 ? json_decode(file_get_contents($targetTemp)) : false);
+            if(isset($meta->Status->Code) && $meta->Status->Code === '-302') {
+                $this->logger->log(SPLog::PRODUCER_CLIENT, "File is gone on the server, needs to be resent.", $meta);
+            }
             // ATENTIE!!!!! daca s-a oprit aici e un caz de fisier cu dimensiunea diferita, de verificat
             @unlink($targetTemp);
             return -$actualSize; //will retry

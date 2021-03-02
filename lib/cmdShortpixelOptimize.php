@@ -302,7 +302,7 @@ function verifyFolder($folder, $create = false)
             $folder = str_replace(DIRECTORY_SEPARATOR, '/', getcwd()) . "/" . substr($folder, 2);
         }
         if (!is_dir($folder)) {
-            if ((strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' && preg_match('/^[a-zA-Z]:\//', $folder) === 0) //it's Windows and no drive letter X - relative path?
+            if ((strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' && preg_match('/^[a-zA-Z]:(\/|\\)/', $folder) === 0) //it's Windows and no drive letter X - relative path?
                 || (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN' && substr($folder, 0, 1) !== '/')
             ) { //linux and no / - relative path?
                 $folder = str_replace(DIRECTORY_SEPARATOR, '/', getcwd()) . "/" . $folder;

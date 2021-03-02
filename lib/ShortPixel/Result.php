@@ -43,7 +43,7 @@ class Result {
         $thisDir = str_replace(DIRECTORY_SEPARATOR, '/', (getcwd() ? getcwd() : __DIR__));
 
         if($path) {
-            if(   (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' && preg_match('/^[a-zA-Z]:\//', $path) === 0) //it's Windows and no drive letter X:
+            if(   (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' && preg_match('/^[a-zA-Z]:(\/|\\)/', $path) === 0) //it's Windows and no drive letter X:
                || (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN' && substr($path, 0, 1) !== '/')) { //it's not Windows and doesn't start with a /
                 $path = (ShortPixel::opt("base_path") ?: $thisDir) . '/' . $path;
             }
