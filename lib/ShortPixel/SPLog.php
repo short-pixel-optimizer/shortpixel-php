@@ -110,6 +110,8 @@ class SPLog {
                 echo($msg);
                 break;
             case self::TARGET_FILE:
+                $ret = file_put_contents($this->targetName, $msg, FILE_APPEND);
+                break;
                 
         }
     }
