@@ -65,6 +65,7 @@ class TextMetaFile {
         if($existing) {
             while(true) {
                 $line = fgets($this->fp);
+                if($line === false) break;
                 $length = strlen(rtrim($line, "\r\n"));
                 if($length == (self::LINE_LENGTH_V2 - 2)) $this->lineLength = self::LINE_LENGTH_V2;
                 elseif($length == (self::LINE_LENGTH - 2)) $this->lineLength = self::LINE_LENGTH;
