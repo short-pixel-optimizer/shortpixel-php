@@ -24,6 +24,7 @@ class Source {
         $files = array();
         foreach($paths as $path) {
             if (!file_exists($path)) throw new ClientException("File not found: " . $path);
+            if (is_dir($path)) throw new ClientException("For folders use fromFolder: " . $path);
             $files[] = $path;
         }
         $data       = array(
