@@ -94,8 +94,8 @@ class TextMetaFile {
         $name = \ShortPixel\MB_basename($path);
         for ($i = 0; ($line = fgets($fp)) !== FALSE; $i++) {
             $data = $metaFile->parse($line);
-            if(!property_exists($data, 'file')) {
-                die(var_dump($line));
+            if(!$data || !property_exists($data, 'file')) {
+                SPLog::Get(SPLog::PRODUCER_PERSISTER)->log(SPLog::PRODUCER_PERSISTER, 'META LINE CORRUPT: ' . $line);
             }
             if($data->file === $name) {
                 $data->filePos = $i;
@@ -189,7 +189,7 @@ class TextMetaFile {
             "percent" => null,
             "optimizedSize" => null,
             "changeDate" => time(),
-            "file" => \ShortPixel\MB_basename($file),
+            "file" => self::sanitizeFileName(\ShortPixel\MB_basename($file)),
             "message" => '',
             //file does not exist if source is a WebFolder and the optimized images are saved to a different target
             "originalSize" => is_dir($file) || !file_exists($file) ? 0 : filesize($file));
@@ -227,7 +227,7 @@ class TextMetaFile {
             "percent" => is_numeric($percent) ? floatval($percent) : 0.0,
             "optimizedSize" => is_numeric($optimizedSize) ? intval($optimizedSize) : 0,
             "changeDate" => strtotime(trim(substr($line, 67, 20))),
-            "file" => rtrim(substr($line, 87, 256)), //rtrim because there could be file names starting with a blank!! (had that)
+            "file" => rtrim(self::unSanitizeFileName(substr($line, 87, 256))), //rtrim because there could be file names starting with a blank!! (had that)
             "message" => trim(substr($line, 343, 111 + $v2offset)),
             "originalSize" => is_numeric($originalSize) ? intval($originalSize) : 0,
         );
@@ -237,13 +237,23 @@ class TextMetaFile {
         return $ret;
     }
 
+    //take care of some abnormalities
+    private static function sanitizeFileName($fileName){
+        return $fileName;
+    }
+
+    private static function unSanitizeFileName($fileName) {
+        return $fileName;
+    }
+
+
     protected function assemble($data) {
         $v2offset = $this->lineLength - self::LINE_LENGTH;
         $convertto = 1;
         if(strpos($data->convertto, '+webp') !== false) $convertto |= TextPersister::FLAG_WEBP;
         if(strpos($data->convertto, '+avif') !== false) $convertto |= TextPersister::FLAG_AVIF;
 
-        return sprintf("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+        $line = sprintf("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
             str_pad($data->type, 2),
             str_pad($data->status, 11),
             str_pad($data->retries % 100, 2), // for folders, retries can be > 100 so do a sanity check here - we're not actually interested in folder retries
@@ -261,5 +271,10 @@ class TextMetaFile {
             str_pad(substr($data->message, 0, 110 + $v2offset), 111 + $v2offset),
             str_pad(substr(number_format($data->originalSize, 0, ".", ""),0 , 8), 9)
         );
+
+        if(strlen($line) + 2 !== $this->lineLength) {
+            echo("LINE LENGTH CORRUPT. DEBUGINFO: " . base64_encode($line));die();
+        }
+        return $line;
     }
 }

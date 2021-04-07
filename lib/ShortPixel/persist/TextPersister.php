@@ -427,7 +427,7 @@ class TextPersister implements Persister {
             $metaData->retries++;
             $metaData->changeDate = time();
         } else {
-            $metaData = TextMetaFile::newEntry($path);
+            $metaData = TextMetaFile::newEntry($path, $this->options);
         }
         $metaData->status = $status == 'error' ? $metaData->retries > ShortPixel::MAX_RETRIES ? 'skip' : 'pending' : $status;
         $metaArr = array_merge((array)$metaData, $optData);
