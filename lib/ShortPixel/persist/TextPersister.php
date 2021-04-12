@@ -64,6 +64,16 @@ class TextPersister implements Persister {
         return array_values(array_merge(self::IGNORED_BY_DEFAULT(), is_array($exclude) ? $exclude : array()));
     }
 
+    private static function sanitize($filename) {
+        //print_r($filename);die();
+        // our list of "unsafe characters", add/remove characters if necessary
+        $dangerousCharacters = array("\n", "\r");
+        // every forbidden character is replaced by a space
+        $safe_filename = str_replace($dangerousCharacters, ' ', $filename, $count);
+
+        return $safe_filename;
+    }
+
     /**
      * @param $path - the file path on the local drive
      * @param bool $recurse - boolean - go into subfolders or not
@@ -125,6 +135,7 @@ class TextPersister implements Persister {
                         $info->totalOptimizedSize += $subInfo->totalOptimizedSize;
                     }
                     else {
+                        rename($path . '/' . $file, $path . '/' . self::sanitize($file));
                         $info->total++;
                         if(!isset($dataArr[$file]) || $dataArr[$file]->status == 'pending') {
                             $info->pending++;
