@@ -37,6 +37,7 @@ class ShortPixel {
         // **** local options ****
         "total_wait" => 30, //seconds
         "base_url" => null, // base url of the images - used to generate the path for toFile by extracting from original URL and using the remaining path as relative path to base_path
+        "url_filter" => false, //the URL filter will be applied on the full inside base_url. Current available URL filters: encode (for base64_encode)
         "base_source_path" => "", // base path of the local files
         "base_path" => false, // base path to save the files
         "backup_path" => false, // backup path, relative to the optimization folder (base_source_path)
