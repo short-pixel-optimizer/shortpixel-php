@@ -239,7 +239,7 @@ class TextMetaFile {
 
     //take care of some abnormalities
     private static function sanitizeFileName($fileName){
-        $dangerousCharacters = array("\n", "\r");
+        $dangerousCharacters = array("\n", "\r", "\\");
         // every forbidden character is replaced by a space
         $fileName = str_replace($dangerousCharacters, ' ', $fileName, $count);
         return $fileName;

@@ -67,7 +67,7 @@ class TextPersister implements Persister {
     private static function sanitize($filename) {
         //print_r($filename);die();
         // our list of "unsafe characters", add/remove characters if necessary
-        $dangerousCharacters = array("\n", "\r");
+        $dangerousCharacters = array("\n", "\r", "\\");
         // every forbidden character is replaced by a space
         $safe_filename = str_replace($dangerousCharacters, ' ', $filename, $count);
 
