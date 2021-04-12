@@ -8,6 +8,7 @@ namespace ShortPixel\persist;
 use ShortPixel\ClientException;
 use ShortPixel\ShortPixel;
 use ShortPixel\SPLog;
+use ShortPixel\persist\TextPersister;
 
 class TextMetaFile {
     const LINE_LENGTH = 465; //including the \r\n at the end
@@ -189,7 +190,7 @@ class TextMetaFile {
             "percent" => null,
             "optimizedSize" => null,
             "changeDate" => time(),
-            "file" => self::sanitizeFileName(\ShortPixel\MB_basename($file)),
+            "file" => TextPersister::sanitize(\ShortPixel\MB_basename($file)),
             "message" => '',
             //file does not exist if source is a WebFolder and the optimized images are saved to a different target
             "originalSize" => is_dir($file) || !file_exists($file) ? 0 : filesize($file));
@@ -235,18 +236,6 @@ class TextMetaFile {
             return false;
         }
         return $ret;
-    }
-
-    //take care of some abnormalities
-    private static function sanitizeFileName($fileName){
-        $dangerousCharacters = array("\n", "\r", "\\");
-        // every forbidden character is replaced by a space
-        $fileName = str_replace($dangerousCharacters, ' ', $fileName, $count);
-        return $fileName;
-    }
-
-    private static function unSanitizeFileName($fileName) {
-        return $fileName;
     }
 
 

@@ -64,10 +64,10 @@ class TextPersister implements Persister {
         return array_values(array_merge(self::IGNORED_BY_DEFAULT(), is_array($exclude) ? $exclude : array()));
     }
 
-    private static function sanitize($filename) {
+    static function sanitize($filename) {
         //print_r($filename);die();
         // our list of "unsafe characters", add/remove characters if necessary
-        $dangerousCharacters = array("\n", "\r", "\\");
+        $dangerousCharacters = array("\n", "\r", "\\", "\b");
         // every forbidden character is replaced by a space
         $safe_filename = str_replace($dangerousCharacters, ' ', $filename, $count);
 
