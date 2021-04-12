@@ -318,6 +318,8 @@ class Client {
 //            aici folosim ceva de genul: parse_url si apoi pe partea de path: str_replace('%2F', '/', rawurlencode($this->filePath)
 //            $body["urllist"] = array_map('rawurlencode', $body["urllist"]);
 //        }
+        if(isset($body["buffers"])) unset($body['buffers']);
+        
         $body = json_encode($body);
 
         array_push($header, "Content-Type: application/json");
