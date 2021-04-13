@@ -119,7 +119,7 @@ class Source {
             throw new PersistException("Persist_type is not enabled in options, needed for folder optimization");
         }
         $paths = $persister->getTodo($path, ShortPixel::MAX_ALLOWED_FILES_PER_WEB_CALL, $exclude, $persistFolder, $recurseDepth);
-        $repl = (object)array("path" => $path, "web" => $webPath);
+        $repl = (object)array("path" => $path . '/', "web" => $webPath . '/');
         if($paths && count($paths->files)) {
             $items = array_merge($paths->files, array_values($paths->filesPending)); //not impossible to have filesPending - for example optimized partially without webPath then added it
             array_walk(
@@ -127,7 +127,7 @@ class Source {
                 function(&$item, $key, $repl){
                     $relPath = str_replace($repl->path, '', $item);
                     $item = implode('/', array_map('rawurlencode', explode('/', $relPath)));
-                    $item = $repl->web .'/'. $this->filter($item);
+                    $item = $repl->web . $this->filter($item);
                 }, $repl);
             ShortPixel::setOptions(array("base_url" => $webPath, "base_source_path" => $path));
 
@@ -176,7 +176,7 @@ class Source {
             $extension = strtolower(substr($item,strripos($item,".")+1));
             //$ExtensionContentType = ( $extension == "jpg" ) ? "jpeg" : $extension;
             $item = base64_encode($item).'.'.$extension;
-            SPLog::Get(SPLog::PRODUCER_SOURCE)->log("ENCODED URL PART: " . $item);
+            SPLog::Get(SPLog::PRODUCER_SOURCE)->log(SPLog::PRODUCER_SOURCE, "ENCODED URL PART: " . $item);
         }
         return $item;
     }
