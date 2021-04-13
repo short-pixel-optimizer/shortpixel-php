@@ -70,8 +70,8 @@ if($webPath === false && isset($options["webPath"])) {
 $bkFolder = $bkFolderRel = false;
 if($bkBase) {
     if(is_dir($bkBase)) {
-        $bkBase = trailingslashit($bkBase);
-        $bkFolder = $bkBase . (strpos($bkBase, trailingslashit($folder)) === 0 ? 'ShortPixelBackups' : basename($folder) . (strpos($bkBase, trailingslashit(dirname($folder))) === 0 ? "_SP_BKP" : "" ));
+        $bkBase = \ShortPixel\SPTools::trailingslashit($bkBase);
+        $bkFolder = $bkBase . (strpos($bkBase, \ShortPixel\SPTools::trailingslashit($folder)) === 0 ? 'ShortPixelBackups' : basename($folder) . (strpos($bkBase, \ShortPixel\SPTools::trailingslashit(dirname($folder))) === 0 ? "_SP_BKP" : "" ));
         $bkFolderRel = \ShortPixel\Settings::pathToRelative($bkFolder, $targetFolder);
     } else {
         $logger->bye(SPLog::PRODUCER_CMD, "Backup path does not exist ($bkFolder)");
@@ -94,9 +94,9 @@ if(!$folder || strlen($folder) == 0) {
 }
 
 if($targetFolder != $folder) {
-    if(strpos($targetFolder, trailingslashit($folder)) === 0) {
+    if(strpos($targetFolder, \ShortPixel\SPTools::trailingslashit($folder)) === 0) {
         $logger->bye(SPLog::PRODUCER_CMD, "Target folder cannot be a subfolder of the source folder. ( $targetFolder $folder)");
-    } elseif (strpos($folder, trailingslashit($targetFolder)) === 0) {
+    } elseif (strpos($folder, \ShortPixel\SPTools::trailingslashit($targetFolder)) === 0) {
         $logger->bye(SPLog::PRODUCER_CMD, "Target folder cannot be a parent folder of the source folder.");
     } else {
         @mkdir($targetFolder, 0777, true);
@@ -313,10 +313,6 @@ function verifyFolder($folder, $create = false)
         }
     }
     return str_replace(DIRECTORY_SEPARATOR, '/', $folder . $suffix);
-}
-
-function trailingslashit($path) {
-    return rtrim($path, '/') . '/';
 }
 
 function spCmdSignalHandler($signo)

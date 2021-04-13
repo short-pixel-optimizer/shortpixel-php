@@ -42,16 +42,17 @@ class Result {
         $thisDir = str_replace(DIRECTORY_SEPARATOR, '/', (getcwd() ? getcwd() : __DIR__));
 
         if($path) {
+            $path = rtrim($path, '/\\');
             if(   (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' && preg_match('/^[a-zA-Z]:(\/|\\)/', $path) === 0) //it's Windows and no drive letter X:
                || (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN' && substr($path, 0, 1) !== '/')) { //it's not Windows and doesn't start with a /
-                $path = (ShortPixel::opt("base_path") ?: $thisDir) . '/' . $path;
+                $path = SPTools::trailingslashit(ShortPixel::opt("base_path") ?: $thisDir) . $path;
             }
         }
         if(!$bkPath && ShortPixel::opt("backup_path")) {
             $bkPath = ShortPixel::opt("backup_path");
         }
         if($bkPath && strpos($bkPath,'/') !== 0) { //it's a relative path
-            $bkPath = normalizePath(rtrim($path, '/') . '/' . $bkPath);
+            $bkPath = normalizePath($path . '/' . $bkPath);
         }
         $i = 0;
         $succeeded = $pending = $failed = $same = array();
@@ -110,14 +111,14 @@ class Result {
                         $origFileName = substr($origFileName, 0, strrpos($origFileName, "."));
                         $origFileName = urldecode(base64_decode($origFileName));
                     }
-                    $originalPath = ShortPixel::opt("base_source_path") . '/' . (strlen($relativePath) ? $relativePath . '/' : '') . $origFileName;
+                    $originalPath = SPTools::trailingslashit(ShortPixel::opt("base_source_path")) . (strlen($relativePath) ? $relativePath . '/' : '') . $origFileName;
                 } else { // something is wrong
                     throw(new ClientException("Malformed response. Please contact support."));
                 }
                 if(!$targetPath) { //se pare ca trebuie oricum
-                    $targetPath = (ShortPixel::opt("base_path") ?: $thisDir) . '/' . $relativePath;
+                    $targetPath = SPTools::trailingslashit(ShortPixel::opt("base_path") ?: $thisDir) . $relativePath;
                 } elseif(ShortPixel::opt("base_source_path") && strlen($relativePath)) {
-                    $targetPath .= '/' . $relativePath;
+                    $targetPath = SPTools::trailingslashit($targetPath) . $relativePath;
                 }
 
                 if($fileName) {

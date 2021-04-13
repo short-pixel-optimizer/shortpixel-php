@@ -55,6 +55,8 @@ class Source {
      * @throws PersistException
      */
     public function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false, $recurseDepth = PHP_INT_MAX, $retrySkipped = false){
+        $path = rtrim($path, '/\\');
+        $persistPath = rtrim($persistPath, '/\\');
         $persister = ShortPixel::getPersister($path);
         if(!$persister) {
             throw new PersistException("Persist is not enabled in options, needed for fetching folder info");
@@ -80,6 +82,8 @@ class Source {
         }
         //sanitize
         $maxFiles = max(1, min(ShortPixel::MAX_ALLOWED_FILES_PER_CALL, intval($maxFiles)));
+        $path = rtrim($path, '/\\');
+        $persistFolder = rtrim($persistFolder, '/\\');
 
         $persister = ShortPixel::getPersister($path);
         if(!$persister) {
@@ -172,6 +176,7 @@ class Source {
             $extension = strtolower(substr($item,strripos($item,".")+1));
             //$ExtensionContentType = ( $extension == "jpg" ) ? "jpeg" : $extension;
             $item = base64_encode($item).'.'.$extension;
+            SPLog::Get(SPLog::PRODUCER_SOURCE)->log("ENCODED URL PART: " . $item);
         }
         return $item;
     }
