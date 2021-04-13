@@ -81,6 +81,9 @@ class TextMetaFile {
         }
     }
 
+    private static function unSanitizeFileName($fileName) {
+        return $fileName;
+    }
 
     public function close() {
         fclose($this->fp);

@@ -37,7 +37,6 @@ class Result {
      * @throws ClientException
      */
     public function toFiles($path = null, $fileName = null, $bkPath = null) {
-
 //        echo(" PATH: $path BkPath: $bkPath");
 //        spdbgd($this->ctx, 'context');
         $thisDir = str_replace(DIRECTORY_SEPARATOR, '/', (getcwd() ? getcwd() : __DIR__));
@@ -106,6 +105,10 @@ class Result {
                         $origURLParts = explode('/', $item->OriginalURL);
                         $origFileName = $origURLParts[count($origURLParts) - 1];
                         $relativePath = "";
+                    }
+                    if(ShortPixel::opt('url_filter') == 'encode') {
+                        $origFileName = substr($origFileName, 0, strrpos($origFileName, "."));
+                        $origFileName = urldecode(base64_decode($origFileName));
                     }
                     $originalPath = ShortPixel::opt("base_source_path") . '/' . (strlen($relativePath) ? $relativePath . '/' : '') . $origFileName;
                 } else { // something is wrong
