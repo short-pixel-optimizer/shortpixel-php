@@ -56,7 +56,7 @@ class Source {
      */
     public function folderInfo($path, $recurse = true, $fileList = false, $exclude = array(), $persistPath = false, $recurseDepth = PHP_INT_MAX, $retrySkipped = false){
         $path = rtrim($path, '/\\');
-        $persistPath = rtrim($persistPath, '/\\');
+        $persistPath = $persistPath ? rtrim($persistPath, '/\\') : false;
         $persister = ShortPixel::getPersister($path);
         if(!$persister) {
             throw new PersistException("Persist is not enabled in options, needed for fetching folder info");
@@ -83,7 +83,7 @@ class Source {
         //sanitize
         $maxFiles = max(1, min(ShortPixel::MAX_ALLOWED_FILES_PER_CALL, intval($maxFiles)));
         $path = rtrim($path, '/\\');
-        $persistFolder = rtrim($persistFolder, '/\\');
+        $persistFolder = $persistFolder ? rtrim($persistFolder, '/\\') : false;
 
         $persister = ShortPixel::getPersister($path);
         if(!$persister) {
