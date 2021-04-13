@@ -174,7 +174,7 @@ class TextMetaFile {
         if($returnPointer) {
             fseek($fp, $crt);
         }
-        return $fstat['size'] / self::LINE_LENGTH;
+        return $fstat['size'] / $this->lineLength;
     }
 
     public static function newEntry($file, $options) {
