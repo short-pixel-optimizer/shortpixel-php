@@ -107,9 +107,11 @@ class Result {
                         $origFileName = $origURLParts[count($origURLParts) - 1];
                         $relativePath = "";
                     }
-                    if(ShortPixel::opt('url_filter') == 'encode') {
-                        $origFileName = substr($origFileName, 0, strrpos($origFileName, "."));
-                        $origFileName = urldecode(base64_decode($origFileName));
+                    if(ShortPixel::opt('url_filter') == 'encode') 
+                        $extPos = strrpos($origFileName, ".");
+                        $ext = strtolower(substr($origFileName,$extPos + 1));
+                        $origFileName = substr($origFileName, 0, $extPos);
+                        $origFileName = urldecode(base64_decode($origFileName)) . '.' . $ext;
                     }
                     $originalPath = SPTools::trailingslashit(ShortPixel::opt("base_source_path")) . (strlen($relativePath) ? $relativePath . '/' : '') . $origFileName;
                 } else { // something is wrong

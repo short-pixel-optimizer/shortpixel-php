@@ -173,9 +173,9 @@ class Source {
     protected function filter($item) {
         if(ShortPixel::opt('url_filter') == 'encode') {
             //TODO apply base64 or crypt on $item, whichone makes for a shorter string.
-            $extPos = strripos($item,".") + 1;
-            $extension = strtolower(substr($item,$extPos));
-            $item = substr($item, 0, $extPos - 1);
+            $extPos = strripos($item,".");
+            $extension = strtolower(substr($item,$extPos + 1));
+            $item = substr($item, 0, $extPos);
             //$ExtensionContentType = ( $extension == "jpg" ) ? "jpeg" : $extension;
             $item = base64_encode($item).'.'.$extension;
             SPLog::Get(SPLog::PRODUCER_SOURCE)->log(SPLog::PRODUCER_SOURCE, "ENCODED URL PART: " . $item);
