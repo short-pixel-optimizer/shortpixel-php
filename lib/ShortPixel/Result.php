@@ -107,7 +107,7 @@ class Result {
                         $origFileName = $origURLParts[count($origURLParts) - 1];
                         $relativePath = "";
                     }
-                    if(ShortPixel::opt('url_filter') == 'encode') 
+                    if(ShortPixel::opt('url_filter') == 'encode') {
                         $extPos = strrpos($origFileName, ".");
                         $ext = strtolower(substr($origFileName,$extPos + 1));
                         $origFileName = substr($origFileName, 0, $extPos);
