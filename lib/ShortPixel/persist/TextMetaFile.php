@@ -214,7 +214,7 @@ class TextMetaFile {
             if($convertto | TextPersister::FLAG_WEBP) $conv[] = '+webp';
             if($convertto | TextPersister::FLAG_AVIF) $conv[] = '+avif';
             $convertto = implode('|', $conv);
-            $this->logger->log(SPLog::PRODUCER_PERSISTER, "Convertto $convertto");
+            //$this->logger->log(SPLog::PRODUCER_PERSISTER, "Convertto $convertto");
         }
 
         $ret = (object) array(

@@ -174,7 +174,7 @@ class Source {
         if(ShortPixel::opt('url_filter') == 'encode') {
             //TODO apply base64 or crypt on $item, whichone makes for a shorter string.
             $extPos = strripos($item,".");
-            $extension = strtolower(substr($item,$extPos + 1));
+            $extension = substr($item,$extPos + 1);
             $item = substr($item, 0, $extPos);
             //$ExtensionContentType = ( $extension == "jpg" ) ? "jpeg" : $extension;
             $item = base64_encode($item).'.'.$extension;

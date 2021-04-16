@@ -109,7 +109,7 @@ class Result {
                     }
                     if(ShortPixel::opt('url_filter') == 'encode') {
                         $extPos = strrpos($origFileName, ".");
-                        $ext = strtolower(substr($origFileName,$extPos + 1));
+                        $ext = substr($origFileName,$extPos + 1);
                         $origFileName = substr($origFileName, 0, $extPos);
                         $origFileName = urldecode(base64_decode($origFileName)) . '.' . $ext;
                     }
