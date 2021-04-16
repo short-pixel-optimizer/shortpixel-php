@@ -45,7 +45,7 @@ class ShortPixel {
         "persist_type" => null, // null - don't persist, otherwise "text" (.shortpixel text file in each folder), "exif" (mark in the EXIF that the image has been optimized) or "mysql" (to be implemented)
         "persist_name" => ".shortpixel",
         "notify_progress" => false,
-            "cache_time" => 0 // number of seconds to cache the folder results - the *Persister classes will cache the getTodo results and retrieve them from memcache if it's available.
+        "cache_time" => 0 // number of seconds to cache the folder results - the *Persister classes will cache the getTodo results and retrieve them from memcache if it's available.
         //"persist_user" => "user", // only for mysql
         //"persist_pass" => "pass" // only for mysql
         // "" => null,

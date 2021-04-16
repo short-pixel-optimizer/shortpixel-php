@@ -61,7 +61,13 @@ class TextPersister implements Persister {
     }
 
     protected function ignored($exclude) {
-        return array_values(array_merge(self::IGNORED_BY_DEFAULT(), is_array($exclude) ? $exclude : array()));
+        $optExclude = isset($this->options['exclude']) && $this->options['exclude']
+            ? (is_array($this->options['exclude'])
+                ? $this->options['exclude']
+                : (is_string($this->options['exclude']) ? explode(',', $this->options['exclude']) : array()))
+            : array();
+        $optExclude = array_map('trim', $optExclude);
+        return array_values(array_merge(self::IGNORED_BY_DEFAULT(), is_array($exclude) ? $exclude : arrray(), $optExclude));
     }
 
     static function sanitize($filename) {
