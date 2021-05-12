@@ -100,13 +100,14 @@ class TextPersister implements Persister {
 
         try {
             if(is_dir($path)) {
+
                 try {
                     $persistFolder = $persistPath;
                     $toClose = !TextMetaFile::IsOpen($persistPath);
                     $metaFile = TextMetaFile::Get($persistPath);
                     $dataArr = $metaFile->readAll();
                 } catch(ClientException $e) {
-                    if(is_dir($persistPath) && file_exists($persistPath . '/' . ShortPixel::opt("persist_name"))) {
+                    if(is_null($metaFile) && ($persistPath) && file_exists($persistPath . '/' . ShortPixel::opt("persist_name"))) {
                         throw $e; //rethrow, there's a problem with the meta file.
                     }
                     $dataArr = array(); //there's no problem if the metadata file is missing and cannot be created, for the info call
@@ -215,7 +216,7 @@ class TextPersister implements Persister {
             }
             throw $e;
         }
-        if($toClose) {
+        if($toClose && !is_null($metaFile)) {
             $metaFile->close();
         }
         return $info;
