@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.8.1";
+    const VERSION = "1.8.2";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -376,9 +376,19 @@ function spdbgd($var, $msg) {
 }
 
 function normalizePath($path) {
-    $patterns = array('~/{2,}~', '~/(\./)+~', '~([^/\.]+/(?R)*\.{2,}/)~', '~\.\./~');
-    $replacements = array('/', '/', '', '');
-    return preg_replace($patterns, $replacements, $path);
+    $abs = ($path[0] === '/') ? '/' : '';
+    $path = str_replace(array('/', '\\'), '/', $path);
+    $parts = array_filter(explode('/', $path), 'strlen');
+    $absolutes = array();
+    foreach ($parts as $part) {
+        if ('.' == $part) continue;
+        if ('..' == $part) {
+            array_pop($absolutes);
+        } else {
+            $absolutes[] = $part;
+        }
+    }
+    return $abs . implode('/', $absolutes);
 }
 
 function getMemcache() {
