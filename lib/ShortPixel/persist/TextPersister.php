@@ -151,13 +151,16 @@ class TextPersister implements Persister {
                         elseif(   $dataArr[$file]->status == 'success' && $this->isChanged($dataArr[$file], $file, $persistPath, $path)
                             // || ($dataArr[$file]->status == 'skip' &&  ($dataArr[$file]->retries <= ShortPixel::MAX_RETRIES || $retrySkipped))) {
                                || ($dataArr[$file]->status == 'skip' && $retrySkipped)) {
-                            //file changed since last optimized, mark it as pending
-                            $dataArr[$file]->status = 'pending';
                             if($dataArr[$file]->status == 'skip' && $retrySkipped) {
                                 $dataArr[$file]->retries = 0;
-                            } else {
-                                $this->logger->log(SPLog::PRODUCER_PERSISTER, "TextPersister->info - CHANGED - REVERT TO PENDING: $path/$file");
+                            } elseif($persistPath !== $path) {
+                                //ORIGINAL image size is changed, also update the size
+                                $this->logger->log(SPLog::PRODUCER_PERSISTER, "TextPersister->info - CHANGED ("
+                                    . ($dataArr[$file]->originalSize > 0 ? " original size: " . filesize($path . '/' . $file) . ", persisted size: " . $dataArr[$file]->originalSize : '') . ") - REVERT TO PENDING: $path/$file");
+                                $dataArr[$file]->originalSize = filesize($path . '/' . $file);
                             }
+                            //file changed since last optimized, mark it as pending
+                            $dataArr[$file]->status = 'pending';
                             $metaFile->update($dataArr[$file]);
                             $info->pending++;
                         }
@@ -291,6 +294,16 @@ class TextPersister implements Persister {
                     $this->logger->logFirst($filePath, SPLog::PRODUCER_PERSISTER, "TextPersister->getTodo - SKIPPING $path/$file - status " . (isset($dataArr[$file]) ? $dataArr[$file]->status : "not processable"));
                 continue;
             }
+
+            if(isset($dataArr[$file]) && $this->isChanged($dataArr[$file], $file, $persistPath, $path)) {
+                //This means the ORIGINAL is changed (optimized images are saved in a diff. folder)
+                $currentSize = filesize($path . '/' . $file);
+                $this->logger->log( SPLog::PRODUCER_PERSISTER, "FILE OPTIMIZED BUT CHANGED AFTERWARDS: $file - initial size: " . $dataArr[$file]->originalSize . " current: " . $currentSize);
+                $dataArr[$file]->status = 'pending';
+                $dataArr[$file]->originalSize =  $currentSize;
+                $metaFile->update($dataArr[$file]);
+            }
+
             //if retried too many times recently {
             if(isset($dataArr[$file]) && $dataArr[$file]->status == 'pending') {
                 $retries = $dataArr[$file]->retries;
