@@ -229,6 +229,17 @@ try {
                     continue;
                 }
             }
+            catch (\ShortPixel\ServeFrException $ex) {
+                if($ex->getCode() == 502) {
+                    $logger->log(SPLog::PRODUCER_CMD, "ServerException: " . $ex->getMessage() . " (CODE: " . $ex->getCode() . ")");
+                    if(++$consecutiveExceptions > \ShortPixel\ShortPixel::MAX_RETRIES) {
+                        $logger->log(SPLog::PRODUCER_CMD, "Too many exceptions. Exiting.");
+                        break;
+                    }
+                } else {
+                    throw $ex;
+                }
+            }
             $tries++;
             $consecutiveExceptions = 0;
 
