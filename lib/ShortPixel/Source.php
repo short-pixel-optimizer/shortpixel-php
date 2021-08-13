@@ -127,7 +127,7 @@ class Source {
                 function(&$item, $key, $repl){
                     $relPath = str_replace($repl->path, '', $item);
                     $item = implode('/', array_map('rawurlencode', explode('/', $relPath)));
-                    $item = $repl->web . $this->filter($item);
+                    $item = $repl->web . Source::filter($item);
                 }, $repl);
             ShortPixel::setOptions(array("base_url" => $webPath, "base_source_path" => $path));
 
@@ -170,7 +170,7 @@ class Source {
         return new Commander($data, $this);
     }
     
-    protected function filter($item) {
+    protected static function filter($item) {
         if(ShortPixel::opt('url_filter') == 'encode') {
             //TODO apply base64 or crypt on $item, whichone makes for a shorter string.
             $extPos = strripos($item,".");
