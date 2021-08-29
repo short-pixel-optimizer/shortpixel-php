@@ -229,7 +229,7 @@ try {
                     continue;
                 }
             }
-            catch (\ShortPixel\ServeFrException $ex) {
+            catch (\ShortPixel\ServerException $ex) {
                 if($ex->getCode() == 502) {
                     $logger->log(SPLog::PRODUCER_CMD, "ServerException: " . $ex->getMessage() . " (CODE: " . $ex->getCode() . ")");
                     if(++$consecutiveExceptions > \ShortPixel\ShortPixel::MAX_RETRIES) {
