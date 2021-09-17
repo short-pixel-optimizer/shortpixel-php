@@ -296,7 +296,7 @@ class TextPersister implements Persister {
             }
 
             if(isset($dataArr[$file]) && $this->isChanged($dataArr[$file], $file, $persistPath, $path)) {
-                //This means the ORIGINAL is changed (optimized images are saved in a diff. folder)
+                //This means the image was externally changed, revert it to pending state and update the size.
                 $currentSize = filesize($path . '/' . $file);
                 $this->logger->log( SPLog::PRODUCER_PERSISTER, "FILE OPTIMIZED BUT CHANGED AFTERWARDS: $file - initial size: " . $dataArr[$file]->originalSize . " current: " . $currentSize);
                 $dataArr[$file]->status = 'pending';
