@@ -19,6 +19,7 @@ class SPLog {
     const PRODUCER_WEB = 32;        //0b00100000;
     const PRODUCER_CTRL = 64;       //0b01000000;
     const PRODUCER_SOURCE = 128;    //0b10000000;
+    const PRODUCER_CACHE = 256;    //0b100000000;
 
     const FLAG_NONE = 0;
     const FLAG_MEMORY = 1;
@@ -153,5 +154,17 @@ class SPLog {
             return self::$dummy;
         }
         return self::$instance;
+    }
+
+    /**
+     * set the target - useful to change the target, for example in order to start logging in a file if a number of retries has been surpassed.
+     * @param $target
+     * @param false $targetName
+     */
+    public function setTarget($target, $targetName = false) {
+        $this->target = $target;
+        if($targetName) {
+            $this->targetName = $targetName;
+        }
     }
 }
