@@ -26,7 +26,10 @@ ini_set('memory_limit','256M');
 
 require_once("shortpixel-php-req.php");
 
+use ShortPixel\Lock;
+use ShortPixel\ShortPixel;
 use \ShortPixel\SPLog;
+use ShortPixel\SPTools;
 
 $processId = uniqid("CLI");
 
@@ -35,7 +38,7 @@ $options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::
 
 $verbose = isset($options["verbose"]) ? (isset($options["logLevel"]) ? $options["logLevel"] : 0) | SPLog::PRODUCER_CMD_VERBOSE : 0;
 $logger = SPLog::Init($processId, $verbose | SPLog::PRODUCER_CMD, SPLog::TARGET_CONSOLE, false, ($verbose ? SPLog::FLAG_MEMORY : SPLog::FLAG_NONE));
-$logger->log(SPLog::PRODUCER_CMD_VERBOSE, "ShortPixel CLI version " . \ShortPixel\ShortPixel::VERSION);
+$logger->log(SPLog::PRODUCER_CMD_VERBOSE, "ShortPixel CLI version " . ShortPixel::VERSION);
 
 $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "ShortPixel Logging VERBOSE" . ($verbose & SPLog::PRODUCER_PERSISTER ? ", PERSISTER" : "") . ($verbose & SPLog::PRODUCER_CLIENT ? ", CLIENT" : ""));
 
@@ -64,14 +67,14 @@ if(!function_exists('curl_version')) {
 }
 
 if($webPath === false && isset($options["webPath"])) {
-    $logger->bye(SPLog::PRODUCER_CMD, "The Web Path specified is invalid - " . $options["webPath"]);
+    $logger->bye(SPLog::PRODUCER_CMD, "The specified Web Path is invalid - " . $options["webPath"]);
 }
 
 $bkFolder = $bkFolderRel = false;
 if($bkBase) {
     if(is_dir($bkBase)) {
-        $bkBase = \ShortPixel\SPTools::trailingslashit($bkBase);
-        $bkFolder = $bkBase . (strpos($bkBase, \ShortPixel\SPTools::trailingslashit($folder)) === 0 ? 'ShortPixelBackups' : basename($folder) . (strpos($bkBase, \ShortPixel\SPTools::trailingslashit(dirname($folder))) === 0 ? "_SP_BKP" : "" ));
+        $bkBase = SPTools::trailingslashit($bkBase);
+        $bkFolder = $bkBase . (strpos($bkBase, SPTools::trailingslashit($folder)) === 0 ? 'ShortPixelBackups' : basename($folder) . (strpos($bkBase, SPTools::trailingslashit(dirname($folder))) === 0 ? "_SP_BKP" : "" ));
         $bkFolderRel = \ShortPixel\Settings::pathToRelative($bkFolder, $targetFolder);
     } else {
         $logger->bye(SPLog::PRODUCER_CMD, "Backup path does not exist ($bkFolder)");
@@ -94,9 +97,9 @@ if(!$folder || strlen($folder) == 0) {
 }
 
 if($targetFolder != $folder) {
-    if(strpos($targetFolder, \ShortPixel\SPTools::trailingslashit($folder)) === 0) {
+    if(strpos($targetFolder, SPTools::trailingslashit($folder)) === 0) {
         $logger->bye(SPLog::PRODUCER_CMD, "Target folder cannot be a subfolder of the source folder. ( $targetFolder $folder)");
-    } elseif (strpos($folder, \ShortPixel\SPTools::trailingslashit($targetFolder)) === 0) {
+    } elseif (strpos($folder, SPTools::trailingslashit($targetFolder)) === 0) {
         $logger->bye(SPLog::PRODUCER_CMD, "Target folder cannot be a parent folder of the source folder.");
     } else {
         @mkdir($targetFolder, 0777, true);
@@ -108,7 +111,7 @@ $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Using notifier: " . get_class($notifi
 
 try {
     //check if the folder is not locked by another ShortPixel process
-    $splock = new \ShortPixel\Lock($processId, $targetFolder, $clearLock);
+    $splock = new Lock($processId, $targetFolder, $clearLock);
     try {
         $splock->lock();
     } catch(\Exception $ex) {
@@ -117,9 +120,9 @@ try {
         $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Lock aquired");
     }
 
-    $logger->log(SPLog::PRODUCER_CMD, "Starting to optimize folder $folder using API Key $apiKey ...");
+    $logger->log(SPLog::PRODUCER_CMD, "ShortPixel CLI " . ShortPixel::VERSION . " starting to optimize folder $folder using API Key $apiKey ...");
 
-    ShortPixel\setKey($apiKey);
+    \ShortPixel\setKey($apiKey);
 
     //try to get optimization options from the folder .sp-options
     $optionsHandler = new \ShortPixel\Settings();
@@ -172,7 +175,7 @@ try {
     }
     $optimizationOptions = array_merge($folderOptions, $overrides, array("persist_type" => "text", "notify_progress" => true, "cache_time" => $cacheTime));
     $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Using OPTIONS: ", $optimizationOptions);
-    \ShortPixel\ShortPixel::setOptions($optimizationOptions);
+    ShortPixel::setOptions($optimizationOptions);
 
     $imageCount = $failedImageCount = $sameImageCount = 0;
     $tries = 0;
@@ -206,8 +209,9 @@ try {
                 if ($webPath) {
                     $result = \ShortPixel\fromWebFolder($folder, $webPath, $exclude, $targetFolderParam, $recurseDepth)->wait(300)->toFiles($targetFolder);
                 } else {
-                    $speed = ($speed ? $speed : \ShortPixel\ShortPixel::MAX_ALLOWED_FILES_PER_CALL);
-                    $result = \ShortPixel\fromFolder($folder, $speed, $exclude, $targetFolderParam, \ShortPixel\ShortPixel::CLIENT_MAX_BODY_SIZE, $recurseDepth)->wait(300)->toFiles($targetFolder);
+                    $speed = ($speed ? $speed : ShortPixel::MAX_ALLOWED_FILES_PER_CALL);
+                    $logger->log(SPLog::PRODUCER_CMD, "\n\n\nPASS $tries ....");
+                    $result = \ShortPixel\fromFolder($folder, $speed, $exclude, $targetFolderParam, ShortPixel::CLIENT_MAX_BODY_SIZE, $recurseDepth)->wait(300)->toFiles($targetFolder);
                 }
                 if(time() - $tempus > $lockTimeout - 100) {
                     //increase the timeout of the lock file if a pass takes too long (for large folders)
@@ -221,7 +225,7 @@ try {
                 } else {
                     $logger->log(SPLog::PRODUCER_CMD, "ClientException: " . $ex->getMessage() . " (CODE: " . $ex->getCode() . ")");
                     $tries++;
-                    if(++$consecutiveExceptions > \ShortPixel\ShortPixel::MAX_RETRIES) {
+                    if(++$consecutiveExceptions > ShortPixel::MAX_RETRIES) {
                         $logger->log(SPLog::PRODUCER_CMD, "Too many exceptions. Exiting.");
                         break;
                     }
@@ -232,7 +236,7 @@ try {
             catch (\ShortPixel\ServerException $ex) {
                 if($ex->getCode() == 502) {
                     $logger->log(SPLog::PRODUCER_CMD, "ServerException: " . $ex->getMessage() . " (CODE: " . $ex->getCode() . ")");
-                    if(++$consecutiveExceptions > \ShortPixel\ShortPixel::MAX_RETRIES) {
+                    if(++$consecutiveExceptions > ShortPixel::MAX_RETRIES) {
                         $logger->log(SPLog::PRODUCER_CMD, "Too many exceptions. Exiting.");
                         break;
                     }

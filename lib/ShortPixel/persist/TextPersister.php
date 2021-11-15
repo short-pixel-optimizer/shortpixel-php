@@ -276,6 +276,7 @@ class TextPersister implements Persister {
         $maxTotalFileSize = $maxTotalFileSizeMb * pow(1024, 2);
         $totalFileSize = 0;
         $filesWaiting = 0;
+
         foreach($files as $file) {
             $filePath = $path . '/' . $file;
             $targetPath = $persistPath . '/' . $file;
@@ -285,13 +286,17 @@ class TextPersister implements Persister {
             if(!file_exists($filePath)) {
                 continue; // strange but found this for a client..., on windows: HS ID 711715228 
             }
-            if(   (!ShortPixel::isProcessable($file) && !is_dir($filePath))
-                || isset($dataArr[$file]) && $dataArr[$file]->status == 'deleted'
-                || isset($dataArr[$file])
-                && (  $dataArr[$file]->status == 'success' && !$this->isChanged($dataArr[$file], $file, $persistPath, $path)
-                    || $dataArr[$file]->status == 'skip') ) {
-                if(!isset($dataArr[$file]) || $dataArr[$file]->status !== 'success')
+            if(  !is_dir($filePath) //never skip folders whatever reason as they can have changes inside them
+               //that's a file:
+               &&(   !ShortPixel::isProcessable($file) //either the file is not processable
+                  || isset($dataArr[$file]) && $dataArr[$file]->status == 'deleted' //or it's deleted
+                  || isset($dataArr[$file])
+                     && (  $dataArr[$file]->status == 'success' && !$this->isChanged($dataArr[$file], $file, $persistPath, $path) //or changed
+                        || $dataArr[$file]->status == 'skip') ) ) //or skipped
+            {
+                if(!isset($dataArr[$file]) || $dataArr[$file]->status !== 'success') {
                     $this->logger->logFirst($filePath, SPLog::PRODUCER_PERSISTER, "TextPersister->getTodo - SKIPPING $path/$file - status " . (isset($dataArr[$file]) ? $dataArr[$file]->status : "not processable"));
+                }
                 continue;
             }
 
@@ -378,14 +383,18 @@ class TextPersister implements Persister {
                 }
 
                 clearstatcache(true, $filePath);
-                if(filesize($filePath) + $totalFileSize > $maxTotalFileSize){
-                    if(filesize($filePath) > $maxTotalFileSize) { //skip this as it won't ever be selected with current settings
+                $fsz = filesize($filePath);
+                if($fsz + $totalFileSize > $maxTotalFileSize){
+                    if($fsz > $maxTotalFileSize) { //skip this as it won't ever be selected with current settings
                         $dataArr[$file]->status = 'skip';
                         if(filesize($filePath) > ShortPixel::CLIENT_MAX_BODY_SIZE * pow(1024, 2)) {
                             $dataArr[$file]->retries = 99;
                         }
                         $dataArr[$file]->message = 'File larger than the set limit of ' . $maxTotalFileSizeMb . 'MBytes';
+                        $this->logger->log(SPLog::PRODUCER_PERSISTER, "TextPersister->getTodo - File too large: $path/$file - size: " . $fsz . "MBytes");
                         $metaFile->update($dataArr[$file]); //this one is too big, we skipped it, just continue with next.
+                    } else {
+                        //$this->logger->log(SPLog::PRODUCER_PERSISTER, "TextPersister->getTodo - File won't fit this round: $path/$file - size: " . $fsz . "MBytes");
                     }
                     continue; //the total file size would exceed the limit so leave this image out for now. If it's not too large by itself, will take it in the next pass.
                 }
@@ -413,8 +422,9 @@ class TextPersister implements Persister {
      */
     protected function isChanged($data, $file, $persistPath, $sourcePath ) {
         clearstatcache(true, $sourcePath);
-        return $persistPath === $sourcePath && $data->optimizedSize > 0 && filesize($sourcePath . '/' . $file) != $data->optimizedSize
-            || $persistPath !== $sourcePath && $data->originalSize > 0 && filesize($sourcePath . '/' . $file) != $data->originalSize;
+        $fileSize = filesize($sourcePath . '/' . $file);
+        return $persistPath === $sourcePath && $data->optimizedSize > 0 && $fileSize != $data->optimizedSize
+            || $persistPath !== $sourcePath && $data->originalSize > 0  && $fileSize != $data->originalSize;
     }
 
     function getNextTodo($path, $count)
