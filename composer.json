@@ -9,6 +9,8 @@
     "api"
   ],
 
+  "bin": ["lib/shortpixel"],
+
   "homepage": "https://shortpixel.com/api",
   "license": "MIT",
 
