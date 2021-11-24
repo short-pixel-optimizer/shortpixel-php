@@ -9,7 +9,7 @@
     "api"
   ],
 
-  "bin": ["lib/shortpixel"],
+  "bin": ["bin/shortpixel"],
 
   "homepage": "https://shortpixel.com/api",
   "license": "MIT",
