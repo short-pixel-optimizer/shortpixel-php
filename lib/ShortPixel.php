@@ -10,7 +10,7 @@ class ShortPixel {
     const MAX_ALLOWED_FILES_PER_CALL = 10;
     const MAX_ALLOWED_FILES_PER_WEB_CALL = 30;
     const MAX_API_ALLOWED_FILES_PER_WEB_CALL = 150;
-    const CLIENT_MAX_BODY_SIZE = 48; // in MBytes.
+    const CLIENT_MAX_BODY_SIZE = 128; // in MBytes.
     const MAX_RETRIES = 6;
 
     const LOSSY_EXIF_TAG = "SPXLY";
