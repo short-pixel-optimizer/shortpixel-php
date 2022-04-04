@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.8.7";
+    const VERSION = "1.8.8";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -20,6 +20,7 @@ class ShortPixel {
     const RESIZE_INNER = 3;
 
     private static $key = NULL;
+    public static $apiDomain = 'api.shortpixel.com';
     private static $client = NULL;
     private static $options = array(
         "lossy" => 1, // 1 - lossy, 2 - glossy, 0 - lossless
@@ -62,6 +63,13 @@ class ShortPixel {
     public static function setKey($key) {
         self::$key = $key;
         self::$client = NULL;
+    }
+
+    /**
+     * @param $apiDomain - the ShortPixel API Domain
+     */
+    public static function setApiDomain($apiDomain) {
+        self::$apiDomain = $apiDomain;
     }
 
     /**
@@ -178,6 +186,14 @@ ShortPixel::setOptions(array('base_path' => sys_get_temp_dir()));
  */
 function setKey($key) {
     return ShortPixel::setKey($key);
+}
+
+/**
+ * stub for ShortPixel::setKey()
+ * @param $apiDomain - the ShortPixel API Domain
+ */
+function setApiDomain($apiDomain) {
+    return ShortPixel::setApiDomain($apiDomain);
 }
 
 /**

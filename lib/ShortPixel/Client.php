@@ -6,8 +6,7 @@ namespace ShortPixel;
 class Client {
 
     public static function API_DOMAIN() {
-        return "api.shortpixel.com";
-        //* DEVELOPMENT !! */ return "devapi2.shortpixel.com";
+        return ShortPixel::$apiDomain;
     }
 
     private $options, $customOptions, $logger;
