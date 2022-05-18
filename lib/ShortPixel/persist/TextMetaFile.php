@@ -190,8 +190,8 @@ class TextMetaFile {
             "resizeWidth" => 0 + $options['resize_width'],
             "resizeHeight" => 0 + $options['resize_height'],
             "convertto" => $options['convertto'],
-            "percent" => null,
-            "optimizedSize" => null,
+            "percent" => 0,
+            "optimizedSize" => 0,
             "changeDate" => time(),
             "file" => TextPersister::sanitize(\ShortPixel\MB_basename($file)),
             "message" => '',
@@ -247,6 +247,8 @@ class TextMetaFile {
         $convertto = 1;
         if(strpos($data->convertto, '+webp') !== false) $convertto |= TextPersister::FLAG_WEBP;
         if(strpos($data->convertto, '+avif') !== false) $convertto |= TextPersister::FLAG_AVIF;
+        
+        if($data->message === null) $data->message = '';
 
         $line = sprintf("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
             str_pad($data->type, 2),

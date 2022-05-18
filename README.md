@@ -94,6 +94,7 @@ $ret = ShortPixel\fromFolder("/path/to/your/local/folder", 0, array(), false, Sh
 
 
 //A simple loop to optimize all images from a folder
+\ShortPixel\ShortPixel::setOptions(array("persist_type" => "text"));
 $stop = false;
 while(!$stop) {
     $ret = ShortPixel\fromFolder("/path/to/your/local/folder")->wait(300)->toFiles("/path/to/save/to");
