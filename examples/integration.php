@@ -558,7 +558,7 @@ class ClientIntegrationTest extends PHPUnit_Framework_TestCase {
         } finally {
             \ShortPixel\setKey(getenv("SHORTPIXEL_KEY")); //put back the right key, for the next tests...
         }
-        throw new \ShortPixel\ClientException("No Quota Exceeded message.");
+        $this->fail("No Quota Exceeded message.");
     }
 
     public function testShouldCompressJPGsFromFolderWithTextPersister() {

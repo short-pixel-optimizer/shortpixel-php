@@ -96,7 +96,7 @@ class TextPersister implements Persister {
             $persistPath = $path;
         }
         $toClose = false; $persistFolder = false; $metaFile = null;
-        $info = array('status' => 'error', 'message' => "Unknown error, please contact support.", 'code' => -999);
+        $info = (object)array('status' => 'error', 'message' => "Unknown error, please contact support.", 'code' => -999);
 
         try {
             if(is_dir($path)) {
