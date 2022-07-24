@@ -229,7 +229,7 @@ class TextPersister implements Persister {
     {
         if(!file_exists($path) || !is_dir($path)) {
             $this->logger->log(SPLog::PRODUCER_PERSISTER, "TextPersister->getTodo - file not found or not a directory: $path");
-            return array();
+            return false;
         }
         if(!$persistPath) {$persistPath = $path;}
 

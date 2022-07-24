@@ -77,7 +77,7 @@ class ExifPersister implements Persister {
     {
         $results = array();
         $this->getTodoRecursive($path, $count, array_values(array_merge($exclude, array('.','..'))), $results, $recurseDepth);
-        return  $results;
+        return  (object)array('files' => $results, 'filesPending' => array(), 'filesSkipped' => array(), 'refresh' => false);
     }
 
     private function getTodoRecursive($path, &$count, $ignore, &$results, $recurseDepth) {

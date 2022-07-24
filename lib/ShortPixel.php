@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.8.9";
+    const VERSION = "1.8.10";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -146,8 +146,11 @@ class ShortPixel {
             return self::$persistersRegistry[self::$options["persist_type"] . $context];
         }
 
-        $persister = null;
-        switch(self::$options["persist_type"]) {
+        $persistType = self::$options["persist_type"];
+        if(!is_string($persistType)) {
+            throw new PersistException("Invalid persist type: " . var_export($persistType, true));
+        }
+        switch($persistType) {
             case "exif":
                 $persister = new persist\ExifPersister(self::$options);
                 break;
