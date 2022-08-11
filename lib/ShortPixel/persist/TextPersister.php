@@ -316,7 +316,7 @@ class TextPersister implements Persister {
                 $delta = max(0, $retries - 2) * 60 + max(0, $retries - 5) * 60 + max(0, $retries - 10) * 180 + max(0, $retries - 20) * 450;
                 if($dataArr[$file]->changeDate > time() - $delta) {
                     $filesWaiting++;
-                    $this->logger->logFirst($filePath, SPLog::PRODUCER_PERSISTER, "TextPersister->getTodo - TOO MANY RETRIES for $file");
+                    $this->logger->logFirst($filePath, SPLog::PRODUCER_PERSISTER | SPLog::PRODUCER_CMD, "TextPersister->getTodo - TOO MANY RETRIES for $file ($retries)");
                     continue;
                 }
             }
