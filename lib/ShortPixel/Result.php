@@ -24,8 +24,17 @@ class Result {
         return $this->ctx;
     }
 
-    public function toBuffer() {
-        return $this->ctx;
+    public function toBuffers() {
+        $response = array();
+        foreach($this->ctx->body as $item) {
+            if($item->Status->Code == 2) {
+                $compressionType = (array_merge(ShortPixel::options(), $this->commander->getCommands(), $this->commander->getData()))['lossy'];
+                $item->Buffer = file_get_contents($compressionType ? $item->LossyURL : $item->LosslessURL);
+                $item->localPath = null;
+                $response[] = $item;
+            }
+        }
+        return $response;
     }
 
     /**
@@ -156,6 +165,7 @@ class Result {
                         || $item->WebPLosslessURL != 'NA' && ($item->WebPLosslessSize == 'NA' || !$item->WebPLosslessSize)
                         || $item->AVIFLossyURL != 'NA' && ($item->AVIFLossySize == 'NA' || !$item->AVIFLossySize )
                         || $item->AVIFLosslessURL != 'NA' && ($item->AVIFLosslessSize == 'NA' || !$item->AVIFLosslessSize))) {
+                    $this->logger->log(SPLog::PRODUCER_RESULT, "API WAITING BUG, leave it in PENDING.");
                     $item->Status->Code = 1;
                 }
 
@@ -168,7 +178,7 @@ class Result {
                     } else {
                         $pending[$found]->Retries += 1;
                     }
-                    $this->logger->log(SPLog::PRODUCER_RESULT, "PENDING, RETRIES:", $pending[$found]->Retries);
+                    $this->logger->log(SPLog::PRODUCER_RESULT, "PENDING, RETRIES: " . $pending[$found]->Retries);
                     continue;
                 }
                 elseif ($item->Status->Code != 2) {
