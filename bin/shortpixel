@@ -1,2 +1,7 @@
 #!/bin/bash
-php ../lib/cmdShortpixelOptimize.php $@
+if [[ $@ == *--file* ]]; then
+  php ../lib/cmdShortpixelOptimizeFile.php $@
+else
+  php ../lib/cmdShortpixelOptimize.php $@
+fi
+

@@ -4,7 +4,7 @@ namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.8.10";
+    const VERSION = "1.9.0";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -286,6 +286,12 @@ function fromWebFolder($path, $webPath, $exclude = array(), $persistFolder = fal
     return $source->fromWebFolder($path, $webPath, $exclude, $persistFolder, $recurseDepth);
 }
 
+/**
+ * Stub for Source::fromBuffer. Creates a Commander object from a buffer.
+ * @param $name - a unique name for the buffer that will be sent to the optimization cloud
+ * @param $contents - the image contents of the buffer
+ * @return Commander
+ */
 function fromBuffer($name, $contents) {
     $source = new Source();
     return $source->fromBuffer($name, $contents);
