@@ -107,6 +107,10 @@ while(!$stop) {
 $myImage = file_get_contents($pathTo_shortpixel.png);
 $ret = \ShortPixel\fromBuffer('shortpixel.png', $myImage)->wait(300)->toFiles(self::$tempDir);
 
+//Compress to an image in memory
+$ret = \ShortPixel\fromFiles(array("/path/to/your/local/unoptimized1.png", "/path/to/your/local/unoptimized2.png"))->wait(300)->toBuffers();
+file_put_contents($pathTo_optimized1.png, $ret->succeeded[0]->Buffer); //the optimized image in memory
+
 //Get account status and credits info:
 $ret = \ShortPixel\ShortPixel::getClient()->apiStatus(YOUR_API_KEY);
 
