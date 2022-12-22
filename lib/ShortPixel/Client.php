@@ -186,46 +186,6 @@ class Client {
 
         list($details, $headers, $status, $response) = $this->sendRequest($request,6);
 
-        //TODO delete later
-/*        for($i = 0; $i < 6; $i++) { //curl_setopt($request, CURLOPT_TIMEOUT, 120);curl_setopt($request, CURLOPT_VERBOSE, true);
-            $response = curl_exec($request);
-            if(!curl_errno($request)) {
-                break;
-            } else {
-                ShortPixel::log("CURL ERROR: " . curl_error($request) . " (BODY: $response)");
-            }
-        }
-
-        if(curl_errno($request)) {
-            throw new ConnectionException("Error while connecting: " . curl_error($request) . "");
-        }
-        if (!is_string($response)) {
-            $message = sprintf("%s (#%d)", curl_error($request), curl_errno($request));
-            curl_close($request);
-            throw new ConnectionException("Error while connecting: " . $message);
-        }
-
-        $status = curl_getinfo($request, CURLINFO_HTTP_CODE);
-        $headerSize = curl_getinfo($request, CURLINFO_HEADER_SIZE);
-        curl_close($request);
-
-        $headers = self::parseHeaders(substr($response, 0, $headerSize));
-        $body = substr($response, $headerSize);
-
-        $details = json_decode($body);
-
-        if (!$details) {
-            $message = sprintf("Error while parsing response (Status: %s): %s (#%d)", $status,
-                PHP_VERSION_ID >= 50500 ? json_last_error_msg() : "Error",
-                json_last_error());
-            $details = (object) array(
-                "raw" => $body,
-                "error" => "ParseError",
-                "message" => $message . "( " . $body . ")",
-                "Status" => (object)array("Code" => -1, "Message" => "ParseError: " . $message)
-            );
-        }
-*/
         if(getenv("SHORTPIXEL_DEBUG")) {
             $info = "DETAILS\n";
             if(is_array($details)) {

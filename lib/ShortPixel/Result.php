@@ -25,15 +25,35 @@ class Result {
     }
 
     public function toBuffers() {
-        $response = array();
+        $response = (object)array('status' => array(
+                'code' => 0,
+                'message' => ''),
+            'succeeded' => array(),
+            'pending' => array(),
+            'failed' => array(),
+            'same' => array());
+        $status = -1;
         foreach($this->ctx->body as $item) {
-            if($item->Status->Code == 2) {
+            if($item->Status->Code == 2 && $item->PercentImprovement > 0) {
                 $compressionType = (array_merge(ShortPixel::options(), $this->commander->getCommands(), $this->commander->getData()))['lossy'];
                 $item->Buffer = file_get_contents($compressionType ? $item->LossyURL : $item->LosslessURL);
                 $item->localPath = null;
-                $response[] = $item;
+                $response->succeeded[] = $item;
+                if($status < 0) $status = 2; //status will be 2 if at least one file was optimized and no pending files
+            }
+            elseif($item->Status->Code == 2) { // same
+                $response->same[] = $item;
+                if($status < 0) $status = 2;
+            }
+            elseif($item->Status->Code == 1) {
+                $response->pending[] = $item;
+                $status = 1;
+            }
+            else {
+                $response->failed[] = $item;
             }
         }
+        $response->status['code'] = $status;
         return $response;
     }
 
