@@ -31,6 +31,8 @@ use ShortPixel\ShortPixel;
 use \ShortPixel\SPLog;
 use ShortPixel\SPTools;
 
+$argvIsNull = ($argv === NULL);
+
 $processId = uniqid("CLI");
 
 $options = getopt("", array("apiKey::", "file::", "targetFile::", "webPath::", "compression::", "resize::", "createWebP", "createAVIF", "keepExif", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped",
@@ -38,9 +40,12 @@ $options = getopt("", array("apiKey::", "file::", "targetFile::", "webPath::", "
 
 $verbose = isset($options["verbose"]) ? (isset($options["logLevel"]) ? $options["logLevel"] : 0) | SPLog::PRODUCER_CMD_VERBOSE : 0;
 $logger = SPLog::Init($processId, $verbose | SPLog::PRODUCER_CMD, SPLog::TARGET_CONSOLE, false, ($verbose ? SPLog::FLAG_MEMORY : SPLog::FLAG_NONE));
-$logger->log(SPLog::PRODUCER_CMD_VERBOSE, "ShortPixel CLI version " . ShortPixel::VERSION);
 
+$logger->log(SPLog::PRODUCER_CMD_VERBOSE, "ShortPixel CLI version " . ShortPixel::VERSION);
 $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "ShortPixel Logging VERBOSE" . ($verbose & SPLog::PRODUCER_PERSISTER ? ", PERSISTER" : "") . ($verbose & SPLog::PRODUCER_CLIENT ? ", CLIENT" : ""));
+if($argvIsNull) {
+    $logger->bye(SPLog::PRODUCER_CMD, 'THE $argv global is not set, please check the register_argc_argv setting in php.ini');
+}
 
 $apiKey = isset($options["apiKey"]) ? $options["apiKey"] : false;
 
