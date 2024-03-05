@@ -9,7 +9,7 @@ namespace ShortPixel;
 class Lock {
     const FOLDER_LOCK_FILE = '.sp-lock';
 
-    private $processId, $targetFolder, $clearLock, $releaseTo, $timeout;
+    private $processId, $targetFolder, $clearLock, $releaseTo, $timeout, $logger;
 
     /**
      * @param $processId
@@ -57,6 +57,9 @@ class Lock {
                 throw new \Exception("A lock release was requested by " . $this->releaseTo, -20);
             }
         }
+        if(!file_exists($this->targetFolder)) {
+            mkdir($this->targetFolder, 0755, true);
+        }
         if(FALSE === @file_put_contents($this->lockFile(), $this->processId . "=" . time() . '!' . $this->timeout . (strlen($this->releaseTo) ? "=" . $this->releaseTo : ''))) {
             throw new ClientException("Could not write lock file " . $this->lockFile() . ". Please check rights.", -16);
         }
@@ -76,14 +79,14 @@ class Lock {
                 $this->lock();
                 return;
             }
-        }
-        //now wait for the other process to release the lock, a bit more than its expiry time - in case it was left there...
-        $expiry = max(1, 365 - (time() - $lock[1]));
-        for($i = 0; $i < $expiry; $i++) {
-            if(file_exists($this->lockFile())) {
-                sleep(1);
-            } else {
-                break;
+            //now wait for the other process to release the lock, a bit more than its expiry time - in case it was left there...
+            $expiry = max(1, 365 - (time() - $lock[1]));
+            for($i = 0; $i < $expiry; $i++) {
+                if(file_exists($this->lockFile())) {
+                    sleep(1);
+                } else {
+                    break;
+                }
             }
         }
         $this->lock();

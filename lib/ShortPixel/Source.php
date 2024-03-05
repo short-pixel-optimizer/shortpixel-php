@@ -159,7 +159,7 @@ class Source {
             throw new ClientException("Maximum 100 images allowed per call.");
         }
 
-        $this->urls = array_map ('utf8_encode',  $urls);
+        $this->urls = array_map (array('ShortPixel\SPTools', 'convertToUtf8'),  $urls);
         $data       = array(
             "plugin_version" => ShortPixel::LIBRARY_CODE . " " . ShortPixel::VERSION,
             "key" =>  ShortPixel::getKey(),

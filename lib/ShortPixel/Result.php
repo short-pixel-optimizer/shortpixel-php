@@ -35,7 +35,8 @@ class Result {
         $status = -1;
         foreach($this->ctx->body as $item) {
             if($item->Status->Code == 2 && $item->PercentImprovement > 0) {
-                $compressionType = (array_merge(ShortPixel::options(), $this->commander->getCommands(), $this->commander->getData()))['lossy'];
+                $merged = (array_merge(ShortPixel::options(), $this->commander->getCommands(), $this->commander->getData()));
+                $compressionType = $merged['lossy'];
                 $item->Buffer = file_get_contents($compressionType ? $item->LossyURL : $item->LosslessURL);
                 $item->localPath = null;
                 $response->succeeded[] = $item;
