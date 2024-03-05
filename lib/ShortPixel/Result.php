@@ -174,10 +174,10 @@ class Result {
 
                 if($originalPath) {
                     $item->OriginalFile = $originalPath;
-                    if(!mb_detect_encoding($originalPath, 'UTF-8', true)) { $item->OriginalFileUTF8 = utf8_encode($originalPath); }
+                    $item->OriginalFileUTF8 = SPTools::convertToUtf8($originalPath);
                 }
                 $item->SavedFile = $target;
-                if(!mb_detect_encoding($target, 'UTF-8', true)) { $item->SavedFileUTF8 = utf8_encode($target); }
+                $item->SavedFileUTF8 = SPTools::convertToUtf8($target);
 
                 //TODO: that one is a hack until the API waiting bug is fixed. Afterwards, just throw an exception
                 if(    $item->Status->Code == 2

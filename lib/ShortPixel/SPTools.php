@@ -32,6 +32,8 @@ class SPTools {
      */
     protected static function isUtf8($string)
     {
+        if(function_exists('mb_detect_encoding')) return mb_detect_encoding($string, 'UTF-8', true);
+
         $length = strlen($string);
 
         for ($i = 0; $i < $length; $i++) {
