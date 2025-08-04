@@ -49,7 +49,7 @@ class Client {
         $this->logger = SPLog::Get(SPLog::PRODUCER_CLIENT);
         $this->options = $curlOptions + array(
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_BINARYTRANSFER => true,
+            //deprecated in PHP 8.3, no longer used since 5.5 CURLOPT_BINARYTRANSFER => true,
             CURLOPT_HEADER => true,
             CURLOPT_TIMEOUT => 60,
             //CURLOPT_CAINFO => self::caBundle(),
@@ -378,7 +378,7 @@ class Client {
         // set options
         return @curl_setopt_array($ch, array(
             CURLOPT_POST       => true,
-            CURLOPT_BINARYTRANSFER => true,
+            //deprecated in PHP 8.3, no longer used since 5.5 CURLOPT_BINARYTRANSFER => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 300, //to be able to handle via post large files up to 48M which might take a long time to upload.
             CURLOPT_POSTFIELDS => implode("\r\n", $body),
