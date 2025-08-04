@@ -47,38 +47,59 @@ class Commander {
     }
 
     /**
-     * @param bool|true $keep
+     * @param int $keep values:
+     * 0: Remove all EXIF data
+     * 1: Keep all EXIF data
+     * 2: Remove but allow AI
+     * 3: Keep and allow AI
+     * 4: Remove and deny AI except SEO
+     * 5: Keep and deny AI except SEO
+     * 6: Remove and deny AI
+     * 7: Keep and deny AI
      * @return $this
      */
-    public function keepExif($keep = true) {
-        $this->commands = array_merge($this->commands, array("keep_exif" => $keep ? 1 : 0));
-        return $this;
-    }
-
-    
-
-    /**
-     * @param bool|true $generate - default true, meaning generates WebP.
-     * @return $this
-     */
-    public function generateWebP($generate = true) {
-        $convertto = isset($this->commands['convertto']) ? explode('|', $this->commands['convertto']) : array();
-        $convertto[] = '+webp';
-        $this->commands = array_merge($this->commands, array("convertto" => implode('|', array_unique($convertto))));
+    public function keepExif($keep = 1) {
+        $keep = max(0, min(7, intval($keep)));
+        $this->commands = array_merge($this->commands, array("keep_exif" => $keep));
         return $this;
     }
 
     /**
-     * @param bool|true $generate - default true, meaning generates WebP.
+     * @param bool|true $alongside - default true, meaning generates WebP alongside the original, otherwise it doesn't optimize the original.
      * @return $this
      */
-    public function generateAVIF($generate = true) {
+    public function generateWebP($alongside = true) {
+        return $this->convertToType('webp', $alongside);
+    }
+
+    /**
+     * @param bool|true $generate - default true, meaning generates AVIF alongside the original, otherwise it doesn't optimize the original.
+     * @return $this
+     */
+    public function generateAVIF($alongside = true) {
+        return $this->convertToType('avif', $alongside);
+    }
+
+
+    /**
+     * @param bool|true $generate - default true, meaning generates PNG alongside the original, otherwise it doesn't optimize the original.
+     * @return $this
+     */
+    public function generatePng($alongside = true) {
+        return $this->convertToType('png', $alongside);
+    }
+
+    /**
+     * @param $alongside
+     * @return $this
+     */
+    public function convertToType($type, $alongside = false): Commander
+    {
         $convertto = isset($this->commands['convertto']) ? explode('|', $this->commands['convertto']) : array();
-        $convertto[] = '+avif';
+        $convertto[] = ($alongside ? '+' : '') . $type;
         $this->commands = array_merge($this->commands, array("convertto" => implode('|', array_unique($convertto))));
         return $this;
     }
-
     /**
      * @param bool|true $refresh - if true, tells the server to discard the already optimized image and redo the optimization with the new settings.
      * @return $this
@@ -133,6 +154,8 @@ class Commander {
             }
             for($i = 0; $i < 6; $i++) {
                 $return = $this->execute(true);
+                //the refresh param should be added only the first time the command is sent
+                $this->commands["refresh"] = 0;
                 $this->logger->log(SPLog::PRODUCER_CTRL, "EXECUTE RETURNED: ", $return);
                 if(!isset($return->body->Status->Code) || !in_array($return->body->Status->Code, array(-305, -404, -500))) {
                     break;

@@ -264,6 +264,8 @@ class Result {
                     }
                     $this->checkSaveWebP($item, $target, $cmds);
                     $this->checkSaveAVIF($item, $target, $cmds);
+                    $this->checkSavePng($item, $target, $cmds);
+                    $this->checkSaveJpg($item, $target, $cmds);
                     $same[] = $item;
                     $this->removeItem($item, $pending, "OriginalURL");
                     $this->persist($item, $cmds);
@@ -333,6 +335,8 @@ class Result {
                     }
                     $this->checkSaveWebP($item, $target, $cmds);
                     $this->checkSaveAVIF($item, $target, $cmds);
+                    $this->checkSavePng($item, $target, $cmds);
+                    $this->checkSaveJpg($item, $target, $cmds);
                 }
                 catch(ClientException $e) {
                     $failed[] = $item;
@@ -388,24 +392,30 @@ class Result {
         return $ret;
     }
 
-    private function checkSaveWebP($item, $target, $cmds)
+    private function checkSaveConversion($type, $item, $target, $cmds)
     {
-        if (isset($item->WebPLossyURL) && $item->WebPLossyURL !== 'NA') { //a WebP image was generated as per the options, download and save it too
-            $webpTarget = $targetWebPFile = dirname($target) . '/' . MB_basename($target, '.' . pathinfo($target, PATHINFO_EXTENSION)) . ".webp";
-            $optWebPURL = $cmds["lossy"] > 0 ? $item->WebPLossyURL : $item->WebPLosslessURL;
-            ShortPixel::getClient()->download($optWebPURL, $webpTarget);
-            $item->WebPSavedFile = $webpTarget;
+        if (isset($item->{$type . 'LossyURL'}) && $item->{$type . 'LossyURL'} !== 'NA') { //a WebP image was generated as per the options, download and save it too
+            $target = dirname($target) . '/' . MB_basename($target, '.' . pathinfo($target, PATHINFO_EXTENSION)) . "." . strtolower($type);
+            $optURL = $cmds["lossy"] > 0 ? $item->{$type . 'LossyURL'} : $item->{$type . 'LosslessURL'};
+            ShortPixel::getClient()->download($optURL, $target);
+            $item->{$type . 'SavedFile'} = $target;
         }
     }
 
-    private function checkSaveAVIF($item, $target, $cmds)
-    {
-        if (isset($item->AVIFLossyURL) && $item->AVIFLossyURL !== 'NA') { //an AVIF image was generated as per the options, download and save it too
-            $avifTarget = $targetAVIFFile = dirname($target) . '/' . MB_basename($target, '.' . pathinfo($target, PATHINFO_EXTENSION)) . ".avif";
-            $optAVIFURL = $cmds["lossy"] > 0 ? $item->AVIFLossyURL : $item->AVIFLosslessURL;
-            ShortPixel::getClient()->download($optAVIFURL, $avifTarget);
-            $item->AVIFSavedFile = $avifTarget;
-        }
+    private function checkSaveWebP($item, $target, $cmds) {
+        $this->checkSaveConversion('WebP', $item, $target, $cmds);
+    }
+
+    private function checkSaveAVIF($item, $target, $cmds) {
+        $this->checkSaveConversion('AVIF', $item, $target, $cmds);
+    }
+
+    private function checkSavePng($item, $target, $cmds) {
+        $this->checkSaveConversion('Png', $item, $target, $cmds);
+    }
+
+    private function checkSaveJpg($item, $target, $cmds) {
+        $this->checkSaveConversion('Jpg', $item, $target, $cmds);
     }
 
     private function persist($item, $cmds, $status = 'success') {

@@ -216,6 +216,8 @@ class TextMetaFile {
             $convertto = implode('|', $conv);
             //$this->logger->log(SPLog::PRODUCER_PERSISTER, "Convertto $convertto");
         }
+        $message = trim(substr($line, 343, 111 + $v2offset));
+        $message = preg_replace('/^(s?):\/\//', 'http$1://', $message); //restore the http(s):// in front of URLs
 
         $ret = (object) array(
             "type" => trim(substr($line, 0, 2)),
@@ -232,7 +234,7 @@ class TextMetaFile {
             "optimizedSize" => is_numeric($optimizedSize) ? intval($optimizedSize) : 0,
             "changeDate" => strtotime(trim(substr($line, 67, 20))),
             "file" => rtrim(self::unSanitizeFileName(substr($line, 87, 256))), //rtrim because there could be file names starting with a blank!! (had that)
-            "message" => trim(substr($line, 343, 111 + $v2offset)),
+            "message" => $message,
             "originalSize" => is_numeric($originalSize) ? intval($originalSize) : 0,
         );
         if(!in_array($ret->status, self::$ALLOWED_STATUSES) || !$ret->changeDate) {
@@ -249,6 +251,8 @@ class TextMetaFile {
         if(strpos($data->convertto, '+avif') !== false) $convertto |= TextPersister::FLAG_AVIF;
         
         if($data->message === null) $data->message = '';
+        //if it's a URL, shorten it by the http in front, to save space (actually needed for our test API point which has a longer domain name)
+        $data->message = preg_replace('/^http(s)?:\/\//', '$1://', $data->message);
 
         $line = sprintf("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
             str_pad($data->type, 2),
