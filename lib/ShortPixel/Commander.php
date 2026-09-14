@@ -47,6 +47,19 @@ class Commander {
     }
 
     /**
+     * @param $factor
+     * @return $this
+     * @throws ClientException
+     */
+    public function upscale($factor = 2) {
+        if(!in_array($factor, [0, 2, 3, 4])) {
+            throw new ClientException('Wrong upscale factor ' . $factor);
+        }
+        $this->commands = array_merge($this->commands, array('upscale' => ($factor)));
+        return $this;
+    }
+
+    /**
      * @param int $keep values:
      * 0: Remove all EXIF data
      * 1: Keep all EXIF data

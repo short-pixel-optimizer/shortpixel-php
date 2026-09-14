@@ -1,10 +1,9 @@
 <?php
-
 namespace ShortPixel;
 
 class ShortPixel {
     const LIBRARY_CODE = "sp-sdk";
-    const VERSION = "1.11.0";
+    const VERSION = "1.12.0";
     const DEBUG_LOG = false;
 
     const MAX_ALLOWED_FILES_PER_CALL = 10;
@@ -28,6 +27,7 @@ class ShortPixel {
         "resize" => 0, // 0 - don't resize, 1 - outer resize, 3 - inner resize
         "resize_width" => null, // in pixels. null means no resize
         "resize_height" => null, // in pixels. null means no resize
+        'upscale' => null,
         "cmyk2rgb" => 1, // convert CMYK to RGB: 1 yes, 0 no
         "convertto" => "", // if '+webp' then also the WebP version will be generated, if +avif then also the AVIF version will be generated. Specify both with +webp|+avif
         "user" => "", //set the user needed for HTTP AUTH of the base_url
