@@ -1,7 +1,16 @@
 #!/bin/bash
-if [[ $@ == *--file* ]]; then
-  php ../lib/cmdShortpixelOptimizeFile.php $@
-else
-  php ../lib/cmdShortpixelOptimize.php $@
-fi
+# Resolve the real location of this script (following symlinks, e.g. vendor/bin/shortpixel),
+# so that it can be launched from any folder.
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+LIB="$(cd -P "$(dirname "$SOURCE")/../lib" && pwd)"
 
+if [[ "$*" == *--file* ]]; then
+  php "$LIB/cmdShortpixelOptimizeFile.php" "$@"
+else
+  php "$LIB/cmdShortpixelOptimize.php" "$@"
+fi

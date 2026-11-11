@@ -3,13 +3,15 @@
  * Created by: simon
  * Date: 15.11.2016
  * Time: 14:59
- * Usage: cmdShortpixelOptimize.php --apiKey=<your-api-key-here> --folder=/full/path/to/your/images
+ * Usage: php ./lib/cmdShortpixelOptimize.php --apiKey=<your-api-key-here> --folder=/full/path/to/your/images
  *   - add --compression=x : 1 for lossy, 2 for glossy and 0 for lossless
  *   - add --resize=800x600/[type] where type can be 1 for outer resize (default) and 3 for inner resize
  *   - add --backupBase=/full/path/to/your/backup/basedir
  *   - add --targetFolder to specify a different destination for the optimized files.
  *   - add --webPath=http://yoursites.address/img/folder/ to map the folder to a web URL and have our servers download the images instead of posting them (less heavy on memory for large files)
  *   - add --keepExif to keep the EXIF data
+ *   - add --bgRemove=[auto:]x to remove the background: x can be 1 for a transparent background, a colour code #rrggbb or #rrggbbaa (aa being the opacity) or the URL of a replacement background image.
+ *          The optional auto: prefix converts the image to PNG when the original format doesn't support transparency. Examples: --bgRemove=1 --bgRemove=auto:1 --bgRemove='auto:#ff000080'
  *   - add --speeed=x x between 1 and 10 - default is 10 but if you have large images it will eat up a lot of memory when creating the post messages so sometimes you might need to lower it. Not needed when using the webPath mapping.
  *   - add --verbose parameter for more info during optimization
  *   - add --clearLock to clear a lock that's already placed on the folder. BE SURE you know what you're doing, files might get corrupted if the previous script is still running. The locks expire in 6 min. anyway.
@@ -35,7 +37,7 @@ $argvIsNull = ($argv === NULL);
 
 $processId = uniqid("CLI");
 
-$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "resize::", "createWebP", "createAVIF", "keepExif", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped",
+$options = getopt("", array("apiKey::", "folder::", "targetFolder::", "webPath::", "compression::", "resize::", "createWebP", "createAVIF", "keepExif", "bgRemove::", "speed::", "backupBase::", "verbose", "clearLock", "retrySkipped",
                             "exclude::", "recurseDepth::", "logLevel::", "cacheTime::"));
 
 $verbose = isset($options["verbose"]) ? (isset($options["logLevel"]) ? $options["logLevel"] : 0) | SPLog::PRODUCER_CMD_VERBOSE : 0;
@@ -56,6 +58,7 @@ $resizeRaw =  isset($options["resize"]) ? $options["resize"] : false;
 $createWebP = isset($options["createWebP"]);
 $createAVIF = isset($options["createAVIF"]);
 $keepExif = isset($options["keepExif"]);
+$bgRemoveRaw = isset($options["bgRemove"]) ? ($options["bgRemove"] === false ? '1' : $options["bgRemove"]) : false;
 $speed = isset($options["speed"]) ? intval($options["speed"]) : false;
 $bkBase = isset($options["backupBase"]) ? verifyFolder($options["backupBase"]) : false;
 $clearLock = isset($options["clearLock"]);
@@ -170,6 +173,30 @@ try {
     }
     if($keepExif !== false) {
         $overrides['keep_exif'] = 1;
+    }
+
+    if($bgRemoveRaw !== false) {
+        $bgRemoveAuto = false;
+        $bgRemove = $bgRemoveRaw;
+        if(strtolower($bgRemove) === 'auto') {
+            $bgRemoveAuto = true;
+            $bgRemove = '1';
+        } elseif(stripos($bgRemove, 'auto:') === 0) {
+            $bgRemoveAuto = true;
+            $bgRemove = substr($bgRemove, 5);
+        }
+        if($bgRemove === '1' || preg_match('/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/', $bgRemove) || filter_var($bgRemove, FILTER_VALIDATE_URL)) {
+            $overrides['bg_remove'] = $bgRemove;
+            //the command line value replaces both bg_remove and bg_remove_format from .sp-options
+            unset($folderOptions['bg_remove_format']);
+            if($bgRemoveAuto) {
+                $overrides['bg_remove_format'] = 'auto';
+            }
+            $logger->log(SPLog::PRODUCER_CMD_VERBOSE, "Background removal: $bgRemove" . ($bgRemoveAuto ? ", format: auto" : ""));
+        } else {
+            $splock->unlock();
+            $logger->bye(SPLog::PRODUCER_CMD, "Malformed parameter --bgRemove, should be --bgRemove=[auto:]x, x being 1, a colour code like #rrggbb or #rrggbbaa, or a background image URL");
+        }
     }
 
     if($bkFolderRel) {

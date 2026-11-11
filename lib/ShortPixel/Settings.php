@@ -102,7 +102,15 @@ class Settings {
     function readOptions($path) {
         $options = $this->settings;
         if($path && file_exists($path . '/' . self::FOLDER_INI_NAME)) {
-            $options = array_merge($options, parse_ini_file($path . '/' . self::FOLDER_INI_NAME));
+            $iniFile = $path . '/' . self::FOLDER_INI_NAME;
+            $folderOptions = @parse_ini_file($iniFile);
+            if(!is_array($folderOptions)) {
+                $err = error_get_last();
+                throw new ClientException("The options file $iniFile is not valid and could not be read"
+                    . ($err && isset($err['message']) ? " (" . trim($err['message']) . ")" : "")
+                    . ". Please note that values containing special characters like ? & = ; ( ) should be enclosed in double quotes.");
+            }
+            $options = array_merge($options, $folderOptions);
         }
         unset($options['API_KEY']);
         return $options;
