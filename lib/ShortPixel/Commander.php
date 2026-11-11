@@ -60,6 +60,23 @@ class Commander {
     }
 
     /**
+     * @param $data can be '1' or "#1177aa33" colour code or an image URL
+     * @param string $format if 'auto', the file will be auto-converted to PNG if the original format doesn't support transparency
+     * @return $this
+     * @throws ClientException
+     */
+    public function removeBackground($data = '1', $format = false) {
+        if($data != '1' && !preg_match('/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/', $data) && !filter_var($data, FILTER_VALIDATE_URL)) {
+            throw new ClientException('Wrong background removal data ' . $data);
+        }
+        $this->commands = array_merge($this->commands, array('bg_remove' => ($data)));
+        if($format == 'auto') {
+            $this->commands = array_merge($this->commands, array('bg_remove_format' => 'auto'));
+        }
+        return $this;
+    }
+
+    /**
      * @param int $keep values:
      * 0: Remove all EXIF data
      * 1: Keep all EXIF data
